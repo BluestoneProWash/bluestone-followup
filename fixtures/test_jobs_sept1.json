@@ -1,0 +1,30 @@
+[
+  {
+    "id": "f7297c88-ccaf-4b36-a877-59147289a8bd",
+    "customer_id": "5f2095ac-5e43-4e9e-b771-bb31d95c1e28",
+    "date": "2026-09-01",
+    "time": "16:00:00",
+    "end_time": "18:00:00",
+    "address": "169 Oakmont Rd, Birmingham, AL 35244",
+    "service_type": ["Window Cleaning"],
+    "price": 250,
+    "notes": "future quotes: driveway pressure washing $325, roof wash $480",
+    "completed": true,
+    "customer": { "first_name": "Anderson", "last_name": "O'Neal" },
+    "customer_full": { "first_name": "Anderson", "last_name": "O'Neal", "phone": "+12056441282" }
+  },
+  {
+    "id": "bbb9dc60-4d19-4966-b9df-bd3263a68a6e",
+    "customer_id": "9400dc88-3f6d-42b9-81e5-83ef2551c082",
+    "date": "2026-09-01",
+    "time": "18:00:00",
+    "end_time": "19:00:00",
+    "address": "169 Oakmont Road",
+    "service_type": ["Pressure Washing"],
+    "price": 100,
+    "notes": "future quotes: $500 roof wash, $325 exterior window cleaning",
+    "completed": true,
+    "customer": { "first_name": "Dad", "last_name": "Oneal" },
+    "customer_full": { "first_name": "Dad", "last_name": "Oneal", "phone": "+12053701827" }
+  }
+]

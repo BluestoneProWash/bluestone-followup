@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+jobs.json
+results.json
+*.sqlite-journal
+*.sqlite-wal
+.DS_Store

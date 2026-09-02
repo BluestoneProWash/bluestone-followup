@@ -1,0 +1,225 @@
+# ============================================================================
+# Bluestone Pro Wash - Automated Post-Job Follow-Up
+# CONFIG FILE - everything you might want to tweak lives here.
+# Nothing in this file requires code changes. Edit, save, restart the service.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# 1. TIMEZONE & SEND TIMING
+# ---------------------------------------------------------------------------
+timezone: America/Chicago        # all times below are in this zone (CT)
+
+initial_followup:
+  # How long after a job is "complete" to send the day-after check-in text.
+  delay_hours_after_completion: 5
+
+  # What counts as the moment a job is "complete". One of:
+  #   scheduled_end_time  -> the job's end_time on its scheduled date
+  #   marked_complete_at  -> the moment the tech flips the job to Completed
+  #                          (more accurate, but depends on techs marking jobs
+  #                           done promptly; requires the poller to record the
+  #                           transition since RevDek doesn't expose a timestamp)
+  completion_basis: marked_complete_at
+
+  # Daily window the check-in text is allowed to go out.
+  # If completion + delay lands INSIDE this window -> send then.
+  # If it lands AFTER send_window_end -> defer to deferred_send_time next day.
+  # If it lands BEFORE send_window_start -> hold until send_window_start same day.
+  send_window_start: "08:30"      # 8:30 AM CT
+  send_window_end:   "19:00"      # 7:00 PM CT
+  deferred_send_time: "08:30"     # when a deferred text goes out the next morning
+
+closeout:
+  # After a SATISFIED reply, wait this long before sending the closeout text
+  # (quotes / referral / review) so it reads like a person, not an instant bot.
+  # Note: the closeout still can't go out before the next poller run that sees
+  # it as due - so with a 60-min poller the real gap is 2 min up to ~1 hr.
+  delay_minutes_after_satisfied: 2
+
+  # true  = if the job notes have no parseable "future quotes:" section, HOLD the
+  #         closeout (customer gets nothing) and re-check every run until the
+  #         tech adds quotes in RevDek, then send automatically.
+  # false = always send the closeout; if there are no future quotes, just skip
+  #         that paragraph and still send the window plan / referral / review.
+  # Currently false: quotes may legitimately be missing and the customer should
+  # still get the rest.
+  require_future_quotes: false
+
+  # Only used when require_future_quotes is true: if a closeout has been held
+  # this long waiting on notes, text Anderson once. Set to 0 to disable.
+  hold_hours_before_alert: 24
+
+poller:
+  # How often the scheduled job wakes up to look for work.
+  interval_minutes: 60
+  # Safety cap: most check-ins to send in a single poller run.
+  max_sends_per_run: 25
+
+# ---------------------------------------------------------------------------
+# 2. REPLY CLASSIFICATION (Claude)
+# ---------------------------------------------------------------------------
+classification:
+  model: claude-sonnet-5
+  # Buckets the reply is sorted into. Do not rename without updating the branches.
+  # SATISFIED / DISSATISFIED / UNCLEAR / CONTACT_REQUEST
+  unclear_retry_limit: 1          # clarifying texts before escalating to Anderson
+  system_prompt: |
+    You classify a customer's SMS reply to a "how did the job turn out?" text
+    from a pressure-washing company. Respond with exactly one word:
+    SATISFIED, DISSATISFIED, UNCLEAR, or CONTACT_REQUEST.
+    - CONTACT_REQUEST: they want a person to reach out - "call me", "have someone
+      call", "text me back", "I want to talk to someone". Use this even if the
+      tone is neutral or positive. It takes priority over the others.
+    - SATISFIED: clearly positive / happy / no complaints.
+    - DISSATISFIED: any complaint, disappointment, unresolved issue, or negative tone.
+    - UNCLEAR: ambiguous, off-topic, a question, or not enough to tell.
+    When in doubt between SATISFIED and DISSATISFIED, choose UNCLEAR.
+
+  # Phrases that force CONTACT_REQUEST no matter what the classifier says.
+  # Matched as lowercase substrings. Leave unset to use the built-in list.
+  # contact_request_phrases:
+  #   - call me
+  #   - text me back
+  #   - have someone reach out
+
+# ---------------------------------------------------------------------------
+# 3. MESSAGE TEMPLATES  (plain text - these send as real SMS)
+#    - Write each PARAGRAPH as ONE line; the phone wraps it. Blank line
+#      between paragraphs = blank line in the text.
+#    - Placeholders in [brackets] are filled in at send time.
+#    - [quote_list] and [window_plan_block] expand to their own block, or to
+#      nothing - the surrounding blank line collapses automatically.
+# ---------------------------------------------------------------------------
+templates:
+  check_in: |
+    Hey [first_name] this is Anderson. Thank you for your business we really appreciate it! How did everything turn out?
+
+  # SATISFIED reply + the job notes HAVE a future-quotes section.
+  closeout_with_quotes: |
+    Glad to hear it! Here's the quotes we came up with for you while we were there - good for the next [quote_validity_months] months, so no need to get a new quote when you're ready:
+
+    [quote_list]
+
+    [window_plan_block]
+
+    Also, if you refer a friend you both get [referral_discount] off your next service!
+
+    Last thing, if you want to leave us a review those are super helpful and would mean a lot! here's the link: [review_link]
+
+  # SATISFIED reply + NO future-quotes section in the job notes.
+  closeout_no_quotes: |
+    Glad to hear it!
+
+    [window_plan_block]
+
+    If you refer a friend you both get [referral_discount] off your next service!
+
+    Last thing, if you want to leave us a review those are super helpful and would mean a lot! here's the link: [review_link]
+
+  # Window cleaning bundled WITH another service - percentages only.
+  window_plan_block: |
+    Since we did your windows - we offer window cleaning service plans too: [semi_annual_pct]% off for semi-annual, [quarterly_pct]% off for quarterly.
+
+  # Window cleaning ONLY - real plan price off this job's price.
+  window_plan_block_priced: |
+    Since we did your windows - we offer window cleaning service plans: semi-annual at $[semi_annual_price]/visit ([semi_annual_pct]% off), or quarterly at $[quarterly_price]/visit ([quarterly_pct]% off).
+
+  unclear_clarify: |
+    Just want to make sure we got that right - did everything turn out well?
+
+  # Goes to Anderson when a reply asks for a callback / to talk to someone.
+  # Nothing is sent to the customer - Anderson calls them.
+  contact_request: |
+    [customer_name] ([customer_phone]) asked to be contacted about the [service] job on [date]. Their reply: "[reply_text]". No automated reply was sent - give them a call.
+
+  # Goes to Anderson (not the customer) when a happy customer's closeout is
+  # being held because the job notes have no "future quotes" section yet.
+  notes_needed: |
+    [customer_name] replied happy to the [service] check-in on [date], but the job notes have no "future quotes" section, so the closeout text is on hold. Add the future quotes to that job in RevDek and it'll send automatically - or close it out yourself.
+
+  # Goes to Anderson, not the customer.
+  escalation: |
+    Heads up - [customer_name] ([customer_phone]) replied about the [service] job on [date] and didn't sound fully satisfied. Their reply: "[reply_text]". No automated follow-up was sent. Handle directly when you can.
+
+template_values:
+  referral_discount: "$50"
+  quote_validity_months: 12
+  review_link: "https://g.page/r/CduHUezMoZtTEBM/review"
+  business_name: "Bluestone Pro Wash"
+
+# ---------------------------------------------------------------------------
+# 4. JOB-NOTES QUOTE PARSING
+#    Real example that must parse:
+#    "future quotes: roof wash $700, driveway pressure wash: $300"
+# ---------------------------------------------------------------------------
+quote_parsing:
+  section_header: "future quotes"   # case-insensitive; parsing starts after this
+  # Each rendered line, [service] and [amount] filled from the notes.
+  line_format: "- [service]: $[amount]"
+  # Title-case the service name when rendering (roof wash -> Roof Wash).
+  titlecase_service: true
+
+# ---------------------------------------------------------------------------
+# 4b. WINDOW CLEANING SERVICE PLANS
+#     If the job's service_type list includes a match below, the closeout
+#     text gets the window_plan_block paragraph (section 3).
+# ---------------------------------------------------------------------------
+window_cleaning_plans:
+  enabled: true
+  service_match: "window cleaning"   # case-insensitive substring match on service_type
+  semi_annual_discount_pct: 15
+  quarterly_discount_pct: 20
+  # When the job's ONLY service is window cleaning, show real plan prices
+  # (window_plan_block_priced) computed off the job price. When window cleaning
+  # is bundled with another service, the window price can't be isolated, so it
+  # falls back to percentages only (window_plan_block).
+  show_calculated_price: true
+  price_rounding: nearest_dollar   # nearest_dollar | nearest_5 | none
+
+# ---------------------------------------------------------------------------
+# 5. ESCALATION TO ANDERSON
+# ---------------------------------------------------------------------------
+escalation:
+  method: sms                    # sms | email
+  sms_to:  "+12056441282"        # Anderson's cell for internal alerts
+  email_to: "andersononeal05@gmail.com"
+  draft_summary_with_claude: false   # true = let Claude write the alert text
+
+# ---------------------------------------------------------------------------
+# 6. SENDING / PROVIDER / SAFETY
+# ---------------------------------------------------------------------------
+sending:
+  provider: quo
+  # The DEDICATED business number for this automation. Must NOT be the main
+  # Bluestone line (+1 205 547 1941) or the Google Voice number.
+  from_number: "+12059007927"    # dedicated Quo number (Starter plan)
+
+  # START HERE: true = log what WOULD be sent, send nothing. Flip to false to go live.
+  dry_run: true
+
+  respect_opt_outs: true         # never message a number that replied STOP
+  a2p_10dlc_registered: true     # confirmed 2026-09-02
+
+  # Safety: ignore any job first seen completed before this date (CT). Stops the
+  # first run from back-filling months of historical completed jobs.
+  completed_since: "2026-09-02"
+
+  # Test scoping: when this list is non-empty, ONLY these job IDs are ever
+  # followed up - every other completed job is ignored. Empty [] = normal operation.
+  job_allowlist:
+    - 8b806412-8a65-4053-aab4-66822d46ab98   # TEST: Anderson O'Neal, Sep 1 (House Wash, NO future quotes)
+    - bbb9dc60-4d19-4966-b9df-bd3263a68a6e   # TEST: Dad Oneal, Sep 1 (Pressure Washing)
+
+guardrails:
+  # Never send closeout without an explicit SATISFIED classification.
+  require_explicit_satisfied: true
+  # Idempotency: never send the same stage twice for one job.
+  one_send_per_stage_per_job: true
+  # Log every classification + the reply text it was based on.
+  log_all_classifications: true
+
+# ---------------------------------------------------------------------------
+# 7. STORAGE
+# ---------------------------------------------------------------------------
+database:
+  path: ./bluestone-followup.sqlite

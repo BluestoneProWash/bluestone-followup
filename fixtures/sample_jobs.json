@@ -1,0 +1,54 @@
+[
+  {
+    "id": "test-dad-oneal",
+    "customer_id": "cust-dad",
+    "date": "2026-09-01",
+    "time": "13:00:00",
+    "end_time": "14:30:00",
+    "service_type": ["Pressure Washing"],
+    "price": 450,
+    "notes": "Did the driveway and front walk. future quotes: roof wash $700, driveway pressure wash: $300",
+    "completed": true,
+    "customer": { "first_name": "Dad", "last_name": "Oneal" },
+    "customer_full": { "first_name": "Dad", "last_name": "Oneal", "phone": "205-555-0142" }
+  },
+  {
+    "id": "test-windows-only",
+    "customer_id": "cust-win",
+    "date": "2026-09-01",
+    "time": "09:00:00",
+    "end_time": "09:30:00",
+    "service_type": ["Window Cleaning"],
+    "price": 199,
+    "notes": "All exterior windows.",
+    "completed": true,
+    "customer": { "first_name": "Ann", "last_name": "Woodward" },
+    "customer_full": { "first_name": "Ann", "last_name": "Woodward", "phone": "+12055550188" }
+  },
+  {
+    "id": "test-bundled",
+    "customer_id": "cust-bun",
+    "date": "2026-09-01",
+    "time": "10:00:00",
+    "end_time": "11:00:00",
+    "service_type": ["Pressure Washing", "Window Cleaning"],
+    "price": 380,
+    "notes": "Driveway and curb. future quotes: house soft wash $650",
+    "completed": true,
+    "customer": { "first_name": "Jimmy", "last_name": "Alston" },
+    "customer_full": { "first_name": "Jimmy", "last_name": "Alston", "phone": "2055550170" }
+  },
+  {
+    "id": "test-noquotes",
+    "customer_id": "cust-nq",
+    "date": "2026-09-01",
+    "time": "15:00:00",
+    "end_time": "15:30:00",
+    "service_type": ["Pressure Washing"],
+    "price": 250,
+    "notes": "Back patio only.",
+    "completed": true,
+    "customer": { "first_name": "Steven", "last_name": "Fishman" },
+    "customer_full": { "first_name": "Steven", "last_name": "Fishman", "phone": "205-555-0155" }
+  }
+]
