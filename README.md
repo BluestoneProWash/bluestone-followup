@@ -46,7 +46,8 @@ python3 tests/run_tests.py
 
 - Runs as an hourly **cloud routine** on Anthropic's infrastructure — the
   business's computers can be off.
-- `completion_basis: scheduled_end_time` — check-in goes 5h after the job's
-  scheduled end, shifted into 08:30–19:00 CT.
+- Check-in goes out at **9:00 AM CT the morning after the job**
+  (`initial_followup.schedule: next_morning`). Switch to `hours_after_end` in
+  config for "N hours after the scheduled end time" instead.
 - **`dry_run: true`** until reviewed. `sending.job_allowlist` limits it to
   specific test jobs; empty the list to go live for all jobs.

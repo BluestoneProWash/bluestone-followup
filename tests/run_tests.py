@@ -81,14 +81,17 @@ check("no-quotes closeout: no quote lines, has referral+review",
       not co["has_quotes"] and "refer a friend" in co["body"] and "review" in co["body"])
 check("no triple blank", "\n\n\n" not in co["body"])
 
-print("timing (scheduled_end_time basis)")
-j = {"date": "2026-09-01", "end_time": "14:00:00"}
-due = timing.checkin_due_time(j, CFG)          # 14:00 + 5h = 19:00, == window end -> ok
-check("end 14:00 -> due 19:00 same day", due.day == 1 and due.hour == 19, due)
-j2 = {"date": "2026-09-01", "end_time": "15:00:00"}   # +5h = 20:00 -> next day 08:30
-d2 = timing.checkin_due_time(j2, CFG)
-check("end 15:00 -> due next day 08:30", d2.day == 2 and (d2.hour, d2.minute) == (8, 30), d2)
+print("timing")
+due = timing.checkin_due_time({"date": "2026-09-01", "end_time": "14:00:00"}, CFG)
+check("next_morning: due 9am the day after the job", due == datetime(2026, 9, 2, 9, 0, tzinfo=CT), due)
+due2 = timing.checkin_due_time({"date": "2026-09-01", "end_time": "23:30:00"}, CFG)
+check("next_morning: long job still just 9am next day", due2 == datetime(2026, 9, 2, 9, 0, tzinfo=CT), due2)
 check("no date -> None", timing.checkin_due_time({}, CFG) is None)
+CFG_HAE = cfg_with(**{"initial_followup.schedule": "hours_after_end"})
+h1 = timing.checkin_due_time({"date": "2026-09-01", "end_time": "14:00:00"}, CFG_HAE)
+check("hours_after_end: 14:00 -> 19:00 same day", h1.day == 1 and h1.hour == 19, h1)
+h2 = timing.checkin_due_time({"date": "2026-09-01", "end_time": "15:00:00"}, CFG_HAE)
+check("hours_after_end: 15:00 -> next day 08:30", h2.day == 2 and (h2.hour, h2.minute) == (8, 30), h2)
 
 print("classify")
 check("positive", classify.classify_rulebased("Looks great, thank you!")[0] == "SATISFIED")
@@ -161,7 +164,7 @@ jobs = [
                    "customer": {"first_name": "Bob", "last_name": "Kim"}},
                   {"first_name": "Bob", "last_name": "Kim", "phone": "+12055550102"}),
 ]
-now = datetime(2026, 9, 1, 18, 30, tzinfo=CT)   # after 12:00 + 5h = 17:00
+now = datetime(2026, 9, 2, 10, 0, tzinfo=CT)   # morning after the job, past 9am
 esc_num = CFG["escalation"]["sms_to"]
 
 # 1. no threads -> two check-ins
@@ -228,10 +231,13 @@ old = normalize_job({"id": "OLD", "service_type": ["House Wash"], "price": 300, 
 acts = pipeline.plan([old], {}, now, CFGP)
 check("stale job (max_job_age_days) ignored", not [a for a in acts if a.kind == "send_sms"], [a.as_dict() for a in acts])
 
-# 10. not-yet-due check-in
-future_now = datetime(2026, 9, 1, 14, 0, tzinfo=CT)  # before 17:00 due
-acts = pipeline.plan(jobs, {}, future_now, CFGP)
-check("check-in not due yet -> nothing", not [a for a in acts if a.kind == "send_sms"], [a.as_dict() for a in acts])
+# 10. not-yet-due check-in (before 9am the morning after)
+early = datetime(2026, 9, 2, 8, 0, tzinfo=CT)
+acts = pipeline.plan(jobs, {}, early, CFGP)
+check("check-in not due before 9am -> nothing", not [a for a in acts if a.kind == "send_sms"], [a.as_dict() for a in acts])
+# same-day as job -> not due
+acts = pipeline.plan(jobs, {}, datetime(2026, 9, 1, 20, 0, tzinfo=CT), CFGP)
+check("check-in not due same day as job", not [a for a in acts if a.kind == "send_sms"], [a.as_dict() for a in acts])
 
 print()
 print(f"{_p} passed, {_f} failed")

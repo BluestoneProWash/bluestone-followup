@@ -58,7 +58,28 @@ def job_completion_time(job: dict, cfg: Any) -> datetime | None:
         return None
 
 
+def _job_date(job: dict, cfg: Any) -> datetime | None:
+    d = (job.get("date") or "")[:10]
+    try:
+        y, m, day = (int(x) for x in d.split("-"))
+        return datetime(y, m, day, tzinfo=tz(cfg))
+    except (ValueError, TypeError):
+        return None
+
+
 def checkin_due_time(job: dict, cfg: Any) -> datetime | None:
+    """When this job's check-in is allowed to go out (CT-aware), or None."""
+    fu = cfg["initial_followup"]
+    schedule = fu.get("schedule", "next_morning")
+
+    if schedule == "next_morning":
+        jd = _job_date(job, cfg)
+        if jd is None:
+            return None
+        t = _parse_hhmm(fu.get("next_morning_time", "09:00"))
+        return datetime.combine(jd.date() + timedelta(days=1), t, tzinfo=tz(cfg))
+
+    # hours_after_end
     ct = job_completion_time(job, cfg)
     if ct is None:
         return None
@@ -68,7 +89,7 @@ def checkin_due_time(job: dict, cfg: Any) -> datetime | None:
 def compute_send_time(completed_at: datetime, cfg: Any) -> datetime:
     fu = cfg["initial_followup"]
     completed_at = to_ct(completed_at, cfg)
-    delay = timedelta(hours=float(fu.get("delay_hours_after_completion", 5)))
+    delay = timedelta(hours=float(fu.get("hours_after_end", 5)))
     target = completed_at + delay
 
     win_start = _parse_hhmm(fu.get("send_window_start", "08:30"))

@@ -10,25 +10,21 @@
 timezone: America/Chicago        # all times below are in this zone (CT)
 
 initial_followup:
-  # How long after a job is "complete" to send the day-after check-in text.
-  delay_hours_after_completion: 5
+  # When the check-in text goes out:
+  #   next_morning    -> the morning AFTER the job date, at next_morning_time.
+  #                      Simple, and it doesn't matter how long the job ran.
+  #   hours_after_end -> hours_after_end hours after the job's scheduled end time,
+  #                      shifted into send_window_start .. send_window_end
+  #                      (past the window -> next morning at deferred_send_time).
+  schedule: next_morning
+  next_morning_time: "09:00"       # 9:00 AM CT
 
-  # What counts as the moment a job is "complete":
-  #   scheduled_end_time  -> the job's end_time on its scheduled date. Works with
-  #                          no memory between runs, which is why the cloud runner
-  #                          uses it. A job only reaches us with completed=true,
-  #                          so the tech HAS marked it done; this is just the clock
-  #                          it counts from.
-  #   marked_complete_at  -> needs a database; not used by the stateless runner.
+  # Only used when schedule is hours_after_end:
+  hours_after_end: 5
   completion_basis: scheduled_end_time
-
-  # Daily window the check-in text is allowed to go out.
-  # If completion + delay lands INSIDE this window -> send then.
-  # If it lands AFTER send_window_end -> defer to deferred_send_time next day.
-  # If it lands BEFORE send_window_start -> hold until send_window_start same day.
-  send_window_start: "08:30"      # 8:30 AM CT
-  send_window_end:   "19:00"      # 7:00 PM CT
-  deferred_send_time: "08:30"     # when a deferred text goes out the next morning
+  send_window_start: "08:30"
+  send_window_end:   "19:00"
+  deferred_send_time: "08:30"
 
 closeout:
   # After a SATISFIED reply, wait this long before sending the closeout text
