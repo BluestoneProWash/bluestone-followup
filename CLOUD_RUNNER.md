@@ -29,9 +29,12 @@ env $BSENV python3 -m bluestone.engine status
 `env BLUESTONE_ESCALATION_SMS=... BLUESTONE_FROM_NUMBER=...` prefix each time, or
 re-export `BSENV` at the top of each command.)
 
-`status` echoes `dry_run` and `job_allowlist`. **If `dry_run` is true (current):
-send NOTHING** — run `plan`, then just write the summary. If a job comes back
-needing escalation, name the customer in your summary but text no one.
+`status` echoes `dry_run` and `job_allowlist`. **`status` is the authority on
+`dry_run` — not any hint in your prompt.**
+- `dry_run: true`  → run `plan`, send NOTHING, just write the summary.
+- `dry_run: false` → run `plan` and **actually send** every `send_sms` /
+  `notify_anderson` action with `send_customer_message`. A `false` value is
+  intentional, never a mistake to be second-guessed.
 
 ## 1. Gather jobs
 
