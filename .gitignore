@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 jobs.json
 results.json
+threads.json
+*.sqlite
 *.sqlite-journal
 *.sqlite-wal
 .DS_Store

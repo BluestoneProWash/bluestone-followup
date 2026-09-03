@@ -1,9 +1,8 @@
-"""Bluestone Pro Wash - automated post-job follow-up engine.
+"""Bluestone Pro Wash - stateless post-job follow-up engine.
 
-This package is a pure decision engine. It does NOT talk to RevDek, Quo, or
-Claude directly. A scheduled runner (see RUNBOOK.md) fetches data through the
-RevDek integration, feeds it in here, and executes the actions this engine
-returns. That keeps all the logic offline-testable.
+The cloud runner (see CLOUD_RUNNER.md) reads jobs + conversation threads from
+RevDek, feeds them to pipeline.plan(), and executes the returned actions. No
+database - state is re-derived from the threads each run (state.py).
 """
 
-__all__ = ["config", "quotes", "window_plans", "templates", "timing", "classify", "store", "pipeline"]
+__all__ = ["config", "jobs", "quotes", "window_plans", "templates", "timing", "classify", "state", "pipeline"]

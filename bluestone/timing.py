@@ -39,6 +39,32 @@ def to_ct(dt: datetime, cfg: Any) -> datetime:
     return dt.astimezone(tz(cfg))
 
 
+def job_completion_time(job: dict, cfg: Any) -> datetime | None:
+    """The moment a job counts as 'complete', per config.initial_followup.completion_basis.
+
+    scheduled_end_time (default, stateless): the job's end_time on its date.
+    Returns a CT-aware datetime, or None if the job lacks a usable date.
+    """
+    basis = cfg["initial_followup"].get("completion_basis", "scheduled_end_time")
+    d = (job.get("date") or "")[:10]
+    if not d:
+        return None
+    end = (job.get("end_time") or job.get("time") or "17:00")[:8]
+    try:
+        y, m, day = (int(x) for x in d.split("-"))
+        hh, mm = _parse_hhmm(end[:5]).hour, _parse_hhmm(end[:5]).minute
+        return datetime(y, m, day, hh, mm, tzinfo=tz(cfg))
+    except (ValueError, TypeError):
+        return None
+
+
+def checkin_due_time(job: dict, cfg: Any) -> datetime | None:
+    ct = job_completion_time(job, cfg)
+    if ct is None:
+        return None
+    return compute_send_time(ct, cfg)
+
+
 def compute_send_time(completed_at: datetime, cfg: Any) -> datetime:
     fu = cfg["initial_followup"]
     completed_at = to_ct(completed_at, cfg)
