@@ -214,7 +214,6 @@ sending:
   # Test scoping: when this list is non-empty, ONLY these job IDs are ever
   # followed up - every other completed job is ignored. Empty [] = normal operation.
   job_allowlist:
-    - 8b806412-8a65-4053-aab4-66822d46ab98   # TEST: Anderson O'Neal, Sep 1 (House Wash, NO future quotes)
     - bbb9dc60-4d19-4966-b9df-bd3263a68a6e   # TEST: Dad Oneal, Sep 1 (Pressure Washing)
 
 guardrails:
