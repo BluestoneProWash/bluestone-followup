@@ -196,10 +196,9 @@ escalation:
 # ---------------------------------------------------------------------------
 sending:
   provider: quo
-  # The DEDICATED Quo number this automation texts from (separate from the main
-  # Bluestone line and the Google Voice number). Set on the routine as
-  # BLUESTONE_FROM_NUMBER.
-  from_number: "${BLUESTONE_FROM_NUMBER}"
+  # The dedicated Quo number this automation texts from. Informational only -
+  # the send goes through the Quo connection, which already knows the number.
+  from_number: "${BLUESTONE_FROM_NUMBER:-}"
 
   # START HERE: true = log what WOULD be sent, send nothing. Flip to false to go live.
   dry_run: true
@@ -208,8 +207,9 @@ sending:
   a2p_10dlc_registered: true     # confirmed 2026-09-02
 
   # Safety: ignore any job whose scheduled date is before this. Stops a first run
-  # from back-filling months of historical completed jobs.
-  completed_since: "2026-09-02"
+  # from back-filling historical completed jobs. Set it to the go-live date.
+  # Overridable per-run with the BLUESTONE_COMPLETED_SINCE env var.
+  completed_since: "${BLUESTONE_COMPLETED_SINCE:-2026-09-01}"
 
   # Safety: ignore any job older than this many days (a stale completed job that
   # never got followed up shouldn't suddenly get a text weeks later).

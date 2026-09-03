@@ -15,10 +15,19 @@ Never `send_sms`.
 
 ## 0. Setup
 
+Each shell command runs in a fresh shell, so pass the config env vars **inline
+on every `bluestone.engine` call**:
+
 ```
+export BSENV="BLUESTONE_ESCALATION_SMS=$BLUESTONE_ESCALATION_SMS BLUESTONE_FROM_NUMBER=$BLUESTONE_FROM_NUMBER"
 python3 -m pip install --quiet --user pyyaml tzdata 2>/dev/null || true
-python3 -m bluestone.engine status
+env $BSENV python3 -m bluestone.engine status
 ```
+
+(`BLUESTONE_ESCALATION_SMS` / `BLUESTONE_FROM_NUMBER` are provided to the run.
+`BSENV` won't survive into the next shell either — just retype the
+`env BLUESTONE_ESCALATION_SMS=... BLUESTONE_FROM_NUMBER=...` prefix each time, or
+re-export `BSENV` at the top of each command.)
 
 `status` echoes `dry_run` and `job_allowlist`. **If `dry_run` is true (current):
 send NOTHING** — run `plan`, then just write the summary. If a job comes back
@@ -58,7 +67,8 @@ Write `threads.json`:
 ## 3. Decide
 
 ```
-python3 -m bluestone.engine plan --jobs jobs.json --threads threads.json
+env BLUESTONE_ESCALATION_SMS=$BLUESTONE_ESCALATION_SMS BLUESTONE_FROM_NUMBER=$BLUESTONE_FROM_NUMBER \
+  python3 -m bluestone.engine plan --jobs jobs.json --threads threads.json
 ```
 
 Prints `{"dry_run":..., "actions":[...]}`. Each action:
