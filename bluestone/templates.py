@@ -48,8 +48,7 @@ def render_check_in(job: dict, cfg: Any) -> str:
 
 def render_closeout(job: dict, cfg: Any) -> dict:
     """Return {'body': str, 'has_quotes': bool, 'has_window_block': bool}."""
-    notes = job.get("notes")
-    parsed = quotes_mod.parse_future_quotes(notes, cfg)
+    parsed = quotes_mod.parse_job_quotes(job, cfg)   # indicator first, notes fallback
     quote_list = quotes_mod.render_quote_list(parsed, cfg) if parsed else ""
 
     window_block = window_plans.render_window_block(

@@ -63,6 +63,29 @@ check("price-first", qd == [{"service": "roof wash", "amount": "500"},
                             {"service": "exterior window cleaning", "amount": "325"}], qd)
 check("render", quotes.render_quote_list(q, CFG) == "- Roof Wash: $700\n- Driveway Pressure Wash: $300")
 
+print("closing-quotes indicator")
+ci = quotes.parse_closing_quotes("Windows -$300\nRoof-", CFG)
+check("indicator real example, blank 'Roof-' skipped", ci == [{"service": "Windows", "amount": "300"}], ci)
+ci2 = quotes.parse_closing_quotes("Windows-$570\nHouse Wash - $345\nGutters-", CFG)
+check("indicator: no-price lines dropped, prices kept",
+      ci2 == [{"service": "Windows", "amount": "570"}, {"service": "House Wash", "amount": "345"}], ci2)
+check("indicator all blank -> []", quotes.parse_closing_quotes("Roof-\nWindows-", CFG) == [])
+# parse_job_quotes: indicator wins over notes
+jobq = {"notes": "future quotes: siding wash $999",
+        "indicators": [{"name": "Closing Quotes Given", "notes": "Windows -$300"}]}
+check("indicator beats notes", quotes.parse_job_quotes(jobq, CFG) == [{"service": "Windows", "amount": "300"}])
+# empty/no-price indicator -> fall back to notes
+jobq2 = {"notes": "future quotes: siding wash $999",
+         "indicators": [{"name": "Closing Quotes Given", "notes": "Roof-"}]}
+check("blank indicator falls back to notes",
+      quotes.parse_job_quotes(jobq2, CFG) == [{"service": "siding wash", "amount": "999"}])
+# no indicator -> notes
+check("no indicator -> notes", quotes.parse_job_quotes({"notes": "future quotes: roof $400"}, CFG)
+      == [{"service": "roof", "amount": "400"}])
+check("normalize_job pulls indicator note",
+      normalize_job({"id": "x", "date": "2026-09-02", "indicators": [
+          {"name": "Closing Quotes Given", "notes": "Windows -$300"}]}, None)["closing_quotes_note"] == "Windows -$300")
+
 print("window plans")
 check("no window svc", window_plans.render_window_block(["Pressure Washing"], 400, CFG) == "")
 b = window_plans.render_window_block(["Pressure Washing", "Window Cleaning"], 380, CFG)

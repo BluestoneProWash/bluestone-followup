@@ -13,6 +13,14 @@ def _name_case(name: str) -> str:
     return " ".join(out)
 
 
+def _closing_quotes_note(raw: dict) -> str | None:
+    """The 'Closing Quotes Given' indicator's note text on a raw RevDek job."""
+    for ind in raw.get("indicators") or []:
+        if "closing quotes" in (ind.get("name") or "").lower():
+            return ind.get("notes")
+    return None
+
+
 def _service_label(service_type: list[str]) -> str:
     st = [s.strip() for s in (service_type or []) if s and s.strip()]
     if not st:
@@ -86,6 +94,7 @@ def normalize_job(raw: dict, customer: dict | None = None) -> dict:
         "service_label": _service_label(raw.get("service_type", [])),
         "price": raw.get("price"),
         "notes": raw.get("notes"),
+        "closing_quotes_note": _closing_quotes_note(raw),
         "date": raw.get("date"),
         "time": raw.get("time"),
         "end_time": raw.get("end_time"),

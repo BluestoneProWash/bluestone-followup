@@ -38,10 +38,16 @@ needing escalation, name the customer in your summary but text no one.
 1. `search_jobs(completed=true, limit=50)`.
 2. If `status` showed a non-empty `job_allowlist`, drop every job not on it.
 3. Also drop jobs whose `date` is more than ~2 weeks old.
-4. For each remaining job, `get_job(job_id)` for the full `notes`, and find the
-   customer's phone (`search_customers` on the name / `customer_id`).
-5. Write `jobs.json`: a JSON list of the raw job objects, each with
-   `"customer_full": {"first_name","last_name","phone"}`.
+4. For each remaining job:
+   - `get_job(job_id)` for the full `notes`.
+   - `get_job_indicators(job_id)` — the quotes usually live in the
+     **"Closing Quotes Given"** indicator's `notes`, not the job notes.
+   - Find the customer's phone (`search_customers` on the name / `customer_id`).
+5. Write `jobs.json`: a JSON list of the raw job objects, each with:
+   - `"customer_full": {"first_name","last_name","phone"}`
+   - `"indicators": [ ... ]` — the full array from `get_job_indicators` (or the
+     one from `search_jobs` if it's already complete). The engine reads the
+     "Closing Quotes Given" one and falls back to `notes`.
 
 ## 2. Gather threads
 
