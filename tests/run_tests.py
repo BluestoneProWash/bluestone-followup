@@ -139,6 +139,16 @@ check("2nd unclear after clarify -> needs_escalation",
       state.derive(job, th_unclear3, t0 + timedelta(minutes=21), CFG)["stage"] == "needs_escalation")
 check("checkin detection tolerates different first name",
       state.is_checkin("Hey Bob this is Anderson. Thank you for your business we really appreciate it! How did everything turn out?", job, CFG))
+# a prior completed follow-up cycle for the same number must NOT suppress a new job
+job_new = normalize_job({"id": "jn", "service_type": ["House Wash"], "price": 300,
+                         "date": "2026-09-05", "end_time": "16:00:00", "notes": "x",
+                         "customer": {"first_name": "Amy", "last_name": "Ray"}},
+                        {"first_name": "Amy", "last_name": "Ray", "phone": "+12055551234"})
+old_cycle = [msg("outbound", CHECKIN, datetime(2026, 9, 1, 9, 0, tzinfo=CT)),
+             msg("inbound", "looks great thanks", datetime(2026, 9, 1, 9, 5, tzinfo=CT)),
+             msg("outbound", CLOSEOUT, datetime(2026, 9, 1, 9, 8, tzinfo=CT))]
+check("old cycle before this job's date is ignored -> no_thread",
+      state.derive(job_new, old_cycle, datetime(2026, 9, 6, 10, 0, tzinfo=CT), CFG)["stage"] == "no_thread")
 
 print("state.already_escalated")
 esc_body = templates.render_escalation(job, "bad", CFG)  # contains customer phone +12055551234

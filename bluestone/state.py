@@ -15,6 +15,7 @@ from typing import Any
 
 from . import classify as classify_mod
 from . import templates
+from . import timing
 
 STOP_WORDS = {"stop", "stopall", "unsubscribe", "cancel", "end", "quit", "stop all", "opt out", "optout"}
 
@@ -57,8 +58,16 @@ def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
 
     stage: no_thread | no_checkin | awaiting_reply | closeout_pending |
            closed_satisfied | clarifying | escalated | opted_out
+
+    Only messages from at/after this job happened are considered - a prior
+    follow-up cycle with the same customer (or unrelated older chatter) must not
+    look like THIS job's check-in / reply / closeout.
     """
     msgs = sorted(thread or [], key=lambda m: m["at"])
+    cutoff = timing.job_completion_time(job, cfg)
+    if cutoff is not None:
+        cutoff = timing.to_ct(cutoff, cfg)
+        msgs = [m for m in msgs if timing.to_ct(m["at"], cfg) >= cutoff]
     out = [m for m in msgs if m["direction"] == "outbound"]
     inb = [m for m in msgs if m["direction"] == "inbound"]
 

@@ -196,8 +196,8 @@ sending:
   # the send goes through the Quo connection, which already knows the number.
   from_number: "${BLUESTONE_FROM_NUMBER:-}"
 
-  # START HERE: true = log what WOULD be sent, send nothing. Flip to false to go live.
-  dry_run: true
+  # true = log what WOULD be sent, send nothing. false = actually send.
+  dry_run: false
 
   respect_opt_outs: true         # never message a number that replied STOP
   a2p_10dlc_registered: true     # confirmed 2026-09-02
@@ -205,7 +205,7 @@ sending:
   # Safety: ignore any job whose scheduled date is before this. Stops a first run
   # from back-filling historical completed jobs. Set it to the go-live date.
   # Overridable per-run with the BLUESTONE_COMPLETED_SINCE env var.
-  completed_since: "${BLUESTONE_COMPLETED_SINCE:-2026-09-01}"
+  completed_since: "${BLUESTONE_COMPLETED_SINCE:-2026-09-02}"
 
   # Safety: ignore any job older than this many days (a stale completed job that
   # never got followed up shouldn't suddenly get a text weeks later).
@@ -214,7 +214,7 @@ sending:
   # Test scoping: when this list is non-empty, ONLY these job IDs are ever
   # followed up - every other completed job is ignored. Empty [] = normal operation.
   job_allowlist:
-    - bbb9dc60-4d19-4966-b9df-bd3263a68a6e   # TEST: Dad Oneal, Sep 1 (Pressure Washing)
+    - b868a417-a797-4230-a219-a14b447e4cba   # LIVE TEST: Anderson O'Neal, Sep 2 Soft Wash (own phone)
 
 guardrails:
   # Never send closeout without an explicit SATISFIED classification.
