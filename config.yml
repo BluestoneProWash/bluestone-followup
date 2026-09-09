@@ -209,7 +209,7 @@ sending:
   from_number: "${BLUESTONE_FROM_NUMBER:-}"
 
   # true = log what WOULD be sent, send nothing. false = actually send.
-  dry_run: false
+  dry_run: true    # HALTED 2026-09-09: conversation-read idempotency proven unreliable (Summer O'Neal got repeat sends). Rebuilding with job-indicator state before re-enabling.
 
   respect_opt_outs: true         # never message a number that replied STOP
   a2p_10dlc_registered: true     # confirmed 2026-09-02
