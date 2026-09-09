@@ -217,7 +217,7 @@ sending:
   # Safety: ignore any job whose scheduled date is before this. Stops a first run
   # from back-filling historical completed jobs. Set it to the go-live date.
   # Overridable per-run with the BLUESTONE_COMPLETED_SINCE env var.
-  completed_since: "${BLUESTONE_COMPLETED_SINCE:-2026-09-02}"
+  completed_since: "${BLUESTONE_COMPLETED_SINCE:-2026-09-09}"
 
   # Safety: ignore any job older than this many days (a stale completed job that
   # never got followed up shouldn't suddenly get a text weeks later).
@@ -226,7 +226,8 @@ sending:
   # Test scoping: when this list is non-empty, ONLY these job IDs are ever
   # followed up - every other completed job is ignored. Empty [] = normal operation.
   job_allowlist:
-    - b868a417-a797-4230-a219-a14b447e4cba   # LIVE TEST: Anderson O'Neal, Sep 2 Soft Wash (own phone)
+    - ec9395fb-c5d2-4e8c-9df5-47d709effb24   # LIVE TEST: Alex Roth, Sep 9, PW + Window Cleaning
+    - 6084af96-066b-452e-9b2c-192dce2fee7e   # LIVE TEST: Mallorie Petrusson, Sep 9, Window Cleaning only
 
 guardrails:
   # Never send closeout without an explicit SATISFIED classification.
