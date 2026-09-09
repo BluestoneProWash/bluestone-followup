@@ -90,6 +90,20 @@ def render_contact_request(job: dict, reply_text: str, cfg: Any) -> str:
     return _tidy(_fill(cfg["templates"]["contact_request"], values))
 
 
+def render_closeout_reply(job: dict, reply_text: str, cfg: Any) -> str:
+    values = base_values(cfg)
+    values.update(
+        {
+            "customer_name": (job.get("customer_name") or "").strip(),
+            "customer_phone": job.get("customer_phone", ""),
+            "service": job.get("service_label", ""),
+            "date": job.get("date_label", ""),
+            "reply_text": (reply_text or "").strip(),
+        }
+    )
+    return _tidy(_fill(cfg["templates"]["closeout_reply"], values))
+
+
 def render_notes_needed(job: dict, cfg: Any) -> str:
     values = base_values(cfg)
     values.update(

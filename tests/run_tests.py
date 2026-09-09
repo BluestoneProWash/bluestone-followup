@@ -146,6 +146,13 @@ check("checkin + positive reply -> closeout_pending", s_sat["stage"] == "closeou
 th_done = th_sat + [msg("outbound", CLOSEOUT, t0 + timedelta(minutes=10))]
 check("closeout in thread -> closed_satisfied",
       state.derive(job, th_done, t0 + timedelta(hours=1), CFG)["stage"] == "closed_satisfied")
+th_coreply = th_done + [msg("inbound", "actually I'd love the quarterly plan", t0 + timedelta(minutes=30))]
+sc = state.derive(job, th_coreply, t0 + timedelta(minutes=31), CFG)
+check("reply after closeout -> closeout_reply", sc["stage"] == "closeout_reply")
+check("closeout_reply captures the reply", sc["last_reply"]["text"] == "actually I'd love the quarterly plan")
+check("STOP after closeout -> opted_out (not closeout_reply)",
+      state.derive(job, th_done + [msg("inbound", "STOP", t0 + timedelta(minutes=30))],
+                   t0 + timedelta(minutes=31), CFG)["stage"] == "opted_out")
 th_stop = [msg("outbound", CHECKIN, t0), msg("inbound", "STOP", t0 + timedelta(minutes=1))]
 check("STOP -> opted_out", state.derive(job, th_stop, t0, CFG)["stage"] == "opted_out")
 th_neg = [msg("outbound", CHECKIN, t0), msg("inbound", "there are still streaks everywhere", t0 + timedelta(minutes=5))]
@@ -248,6 +255,35 @@ acts = pipeline.plan(jobs, threads4, now, CFGP)
 cr = [a for a in acts if a.job_id == "B"]
 check("contact request -> notify_anderson", cr and cr[0].kind == "notify_anderson", [a.as_dict() for a in acts])
 check("contact request body mentions call", "call" in cr[0].body.lower())
+
+# 7b. reply AFTER the closeout -> notify Anderson, nothing to customer
+coA = templates.render_closeout(jobs[0], CFGP)["body"]
+th_cr = {"+12055550101": [
+    msg("outbound", ciA, now - timedelta(hours=3)),
+    msg("inbound", "looks great", now - timedelta(hours=2, minutes=50)),
+    msg("outbound", coA, now - timedelta(hours=2, minutes=45)),
+    msg("inbound", "actually can I get on the quarterly plan?", now - timedelta(minutes=10)),
+]}
+acts = pipeline.plan(jobs, th_cr, now, CFGP)
+crx = [a for a in acts if a.job_id == "A"]
+check("post-closeout reply -> notify_anderson only",
+      len(crx) == 1 and crx[0].kind == "notify_anderson" and crx[0].stage == "closeout_reply"
+      and crx[0].to == esc_num, [a.as_dict() for a in acts])
+check("post-closeout alert quotes the customer message",
+      "quarterly plan" in crx[0].body, crx[0].body)
+# already alerted -> no repeat
+th_cr[esc_num] = [msg("outbound", crx[0].body, now - timedelta(minutes=5))]
+acts = pipeline.plan(jobs, th_cr, now, CFGP)
+check("post-closeout reply not re-alerted",
+      not [a for a in acts if a.job_id == "A" and a.kind == "notify_anderson"], [a.as_dict() for a in acts])
+# feature off -> ignored
+CFG_OFF = cfg_with(**{"sending.job_allowlist": [], "sending.completed_since": "2026-09-01",
+                      "sending.max_job_age_days": 30})
+CFG_OFF["escalation"]["notify_on_closeout_reply"] = False
+del th_cr[esc_num]
+acts = pipeline.plan(jobs, th_cr, now, CFG_OFF)
+check("notify_on_closeout_reply=false -> nothing", not [a for a in acts if a.job_id == "A"],
+      [a.as_dict() for a in acts])
 
 # 8. scope: job outside allowlist ignored
 CFG_AL = cfg_with(**{"sending.job_allowlist": ["A"], "sending.completed_since": "2026-09-01",

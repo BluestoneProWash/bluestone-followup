@@ -86,6 +86,19 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
         if stage in ("opted_out", "closed_satisfied", "awaiting_reply"):
             continue
 
+        if stage == "closeout_reply":
+            if not cfg["escalation"].get("notify_on_closeout_reply", True):
+                continue
+            if state_mod.already_escalated(job, anderson_thread, now_ct, cfg):
+                actions.append(Action("note", jid, "closeout_reply",
+                                      meta={"skipped": "already alerted Anderson"}))
+                continue
+            reply_text = st["last_reply"]["text"] if st["last_reply"] else ""
+            actions.append(Action("notify_anderson", jid, "closeout_reply", to=esc_to,
+                                  body=templates.render_closeout_reply(job, reply_text, cfg),
+                                  meta={"method": cfg["escalation"].get("method", "sms")}))
+            continue
+
         if stage in ("no_thread", "no_checkin"):
             due = timing.checkin_due_time(job, cfg)
             if due is None or now_ct < timing.to_ct(due, cfg):

@@ -138,6 +138,12 @@ templates:
   escalation: |
     Heads up - [customer_name] ([customer_phone]) replied about the [service] job on [date] and didn't sound fully satisfied. Their reply: "[reply_text]". No automated follow-up was sent. Handle directly when you can.
 
+  # Goes to Anderson when a customer replies AFTER the closeout text (e.g. asking
+  # about a service plan, a referral, more work). The automation does nothing
+  # else - Anderson replies personally.
+  closeout_reply: |
+    [customer_name] ([customer_phone]) replied after the closeout on the [service] job: "[reply_text]". They may want to book something (service plan, referral, more work). No automated reply was sent - follow up with them.
+
 template_values:
   referral_discount: "$50"
   quote_validity_months: 12
@@ -186,6 +192,12 @@ escalation:
   # Don't re-alert Anderson about the same customer within this many days.
   dedupe_days: 30
   draft_summary_with_claude: false
+
+  # After the closeout is sent, if the customer replies again (service plan,
+  # referral, more work), text Anderson so he can follow up. The automation
+  # sends nothing further to the customer. Set false to ignore post-closeout
+  # replies entirely.
+  notify_on_closeout_reply: true
 
 # ---------------------------------------------------------------------------
 # 6. SENDING / PROVIDER / SAFETY

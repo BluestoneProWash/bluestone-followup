@@ -72,8 +72,8 @@ def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
     inb = [m for m in msgs if m["direction"] == "inbound"]
 
     st: dict[str, Any] = {"stage": "no_checkin", "checkin_at": None,
-                          "replies_after_checkin": [], "clarify_count": 0,
-                          "closeout_sent": False, "opted_out": False,
+                          "replies_after_checkin": [], "replies_after_closeout": [],
+                          "clarify_count": 0, "closeout_sent": False, "opted_out": False,
                           "last_reply": None, "classification": None}
 
     if any(is_stop(m["text"]) for m in inb):
@@ -92,11 +92,21 @@ def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
     st["replies_after_checkin"] = replies
     st["clarify_count"] = sum(1 for m in after
                               if m["direction"] == "outbound" and is_clarify(m["text"], cfg))
-    st["closeout_sent"] = any(m["direction"] == "outbound" and is_closeout(m["text"], cfg)
-                              for m in after)
+    closeout_msg = next((m for m in after
+                         if m["direction"] == "outbound" and is_closeout(m["text"], cfg)), None)
+    st["closeout_sent"] = closeout_msg is not None
 
     if st["closeout_sent"]:
-        st["stage"] = "closed_satisfied"
+        # customer messages that arrived AFTER the closeout - the automation is
+        # otherwise done with this job, so a reply here goes to Anderson.
+        post = [m for m in after if m["direction"] == "inbound"
+                and m["at"] > closeout_msg["at"] and not is_stop(m["text"])]
+        st["replies_after_closeout"] = post
+        if post:
+            st["last_reply"] = post[-1]
+            st["stage"] = "closeout_reply"
+        else:
+            st["stage"] = "closed_satisfied"
         return st
     if not replies:
         st["stage"] = "awaiting_reply"

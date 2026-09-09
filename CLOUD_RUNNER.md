@@ -89,6 +89,7 @@ Prints `{"dry_run":..., "actions":[...]}`. Each action:
 | `send_sms` | `clarify` | send `body` to the customer |
 | `note` | `closeout` | closeout not due yet (2-min delay) — do nothing |
 | `notify_anderson` | `escalation` | send `body` to `to` (the escalation number) — **not the customer** |
+| `notify_anderson` | `closeout_reply` | customer replied after the closeout — send `body` to the escalation number, **not the customer** |
 | `note` | anything | informational — do nothing |
 
 **If `dry_run` is false**, execute each `send_sms` / `notify_anderson` with
