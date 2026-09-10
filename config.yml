@@ -240,6 +240,20 @@ sending:
 guardrails:
   # Never send closeout without an explicit SATISFIED classification.
   require_explicit_satisfied: true
-  # Idempotency comes from reading the conversation each run - if our check-in /
-  # closeout / clarify is already in the thread, we don't resend.
   one_send_per_stage_per_job: true
+
+# ---------------------------------------------------------------------------
+# 8. IDEMPOTENCY MARKERS
+# ---------------------------------------------------------------------------
+markers:
+  # The Quo conversation only syncs into RevDek when a human opens the inbox, so
+  # the automation can't trust it to know what it already sent. Instead it stamps
+  # THIS job indicator right after every send, and checks it before sending -
+  # job indicators sync reliably even headless.
+  #
+  # SETUP: this indicator must exist and be ENABLED in RevDek
+  # (Customize -> Job Indicators). The automation writes only to its per-job
+  # note; nothing else touches it. Its note looks like:
+  #     checkin sent 2026-09-10T14:03:00Z
+  #     closeout sent 2026-09-10T15:20:00Z
+  indicator_name: "Bluestone Automation"

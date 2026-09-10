@@ -95,6 +95,7 @@ def normalize_job(raw: dict, customer: dict | None = None) -> dict:
         "price": raw.get("price"),
         "notes": raw.get("notes"),
         "closing_quotes_note": _closing_quotes_note(raw),
+        "indicators": raw.get("indicators") or [],
         "date": raw.get("date"),
         "time": raw.get("time"),
         "end_time": raw.get("end_time"),

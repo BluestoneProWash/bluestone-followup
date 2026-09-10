@@ -16,7 +16,7 @@ os.environ.setdefault("BLUESTONE_ESCALATION_EMAIL", "alerts@example.com")
 os.environ.setdefault("BLUESTONE_FROM_NUMBER", "+12055559999")
 
 from bluestone.config import load_config, unfilled_placeholders
-from bluestone import quotes, window_plans, templates, timing, classify, state, pipeline
+from bluestone import quotes, window_plans, templates, timing, classify, state, markers, pipeline
 from bluestone.jobs import normalize_job, normalize_phone
 
 CFG = load_config(ROOT / "config.yml")
@@ -214,6 +214,39 @@ CFG_HALT["sending"]["halted"] = True
 acts = pipeline.plan(jobs, {}, now, CFG_HALT)
 check("halted -> no send/notify actions",
       not [a for a in acts if a.kind in ("send_sms", "notify_anderson")], [a.as_dict() for a in acts])
+
+# --- idempotency markers ---------------------------------------
+print("markers")
+n0 = markers.add(None, "checkin", datetime(2026, 9, 10, 14, 3, tzinfo=timezone.utc))
+check("add checkin to empty note", n0 == "checkin sent 2026-09-10T14:03:00Z", n0)
+n1 = markers.add(n0, "closeout", datetime(2026, 9, 10, 15, 20, tzinfo=timezone.utc))
+check("add closeout appends line", n1.splitlines()[-1] == "closeout sent 2026-09-10T15:20:00Z", n1)
+check("add is idempotent", markers.add(n1, "checkin", datetime(2026, 9, 11, tzinfo=timezone.utc)) == n1)
+check("parse", markers.parse(n1) == {"checkin", "closeout"})
+check("has", markers.has(n1, "closeout") and not markers.has(n1, "clarify"))
+check("escalated line has no 'sent'", markers.add(None, "escalated", datetime(2026, 9, 10, tzinfo=timezone.utc)) == "escalated 2026-09-10T00:00:00Z")
+jm = {"indicators": [{"name": "Bluestone Automation", "notes": "checkin sent 2026-09-10T14:00:00Z"}]}
+check("job_marker_note by indicator name", markers.job_marker_note(jm, CFG) == "checkin sent 2026-09-10T14:00:00Z")
+check("job_marker_note none when absent", markers.job_marker_note({"indicators": []}, CFG) is None)
+
+# marker suppresses a resend even when the thread is stale
+jobs_m = [normalize_job({"id": "M", "service_type": ["House Wash"], "price": 300, "date": "2026-09-01",
+                         "end_time": "12:00:00", "completed": True, "notes": "future quotes: roof $500",
+                         "indicators": [{"name": "Bluestone Automation", "notes": "checkin sent 2026-09-02T08:00:00Z"}],
+                         "customer": {"first_name": "Mia", "last_name": "K"}},
+                        {"first_name": "Mia", "last_name": "K", "phone": "+12055550301"})]
+acts = pipeline.plan(jobs_m, {}, now, CFGP)   # empty threads = stale = would normally re-send checkin
+check("checkin marker blocks resend on stale thread",
+      not [a for a in acts if a.kind == "send_sms"], [a.as_dict() for a in acts])
+# a real checkin action carries the marker instructions
+acts = pipeline.plan([normalize_job({"id": "N", "service_type": ["House Wash"], "price": 300, "date": "2026-09-01",
+                                     "end_time": "12:00:00", "completed": True, "notes": "x",
+                                     "customer": {"first_name": "Ned", "last_name": "P"}},
+                                    {"first_name": "Ned", "last_name": "P", "phone": "+12055550302"})], {}, now, CFGP)
+ck = [a for a in acts if a.stage == "checkin" and a.kind == "send_sms"][0]
+check("checkin action carries marker + note + indicator",
+      ck.marker == "checkin" and "checkin sent" in ck.marker_note_after
+      and ck.marker_indicator == "Bluestone Automation", ck.as_dict())
 
 # 1. no threads -> two check-ins
 acts = pipeline.plan(jobs, {}, now, CFGP)

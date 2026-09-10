@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from . import markers as markers_mod
 from . import state as state_mod
 from . import templates
 from . import timing
@@ -22,14 +23,19 @@ from . import timing
 class Action:
     kind: str            # send_sms | notify_anderson | note
     job_id: str | None
-    stage: str           # checkin | closeout | clarify | escalation | notes_needed
+    stage: str           # checkin | closeout | clarify | escalation | closeout_reply
     to: str | None = None
     body: str = ""
+    marker: str | None = None       # marker stage to record after this send succeeds
+    marker_note_after: str | None = None   # exact indicator note text to write
+    marker_indicator: str | None = None    # indicator name to write it on
     meta: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         return {"kind": self.kind, "job_id": self.job_id, "stage": self.stage,
-                "to": self.to, "body": self.body, "meta": self.meta}
+                "to": self.to, "body": self.body, "marker": self.marker,
+                "marker_note_after": self.marker_note_after,
+                "marker_indicator": self.marker_indicator, "meta": self.meta}
 
 
 def _to(cfg: Any) -> str | None:
@@ -73,8 +79,14 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
     anderson_thread = threads.get(esc_to or "", [])
     max_sends = int(cfg["poller"].get("max_sends_per_run", 25))
     delay_min = int(cfg.get("closeout", {}).get("delay_minutes_after_satisfied", 0))
+    ind_name = markers_mod.indicator_name(cfg)
     sent = 0
     actions: list[Action] = []
+
+    def send(kind, jid, stage, to, body, marker, marker_note, meta=None):
+        return Action(kind, jid, stage, to=to, body=body, marker=marker,
+                      marker_note_after=markers_mod.add(marker_note, marker, now_ct),
+                      marker_indicator=ind_name, meta=meta or {})
 
     for job in jobs:
         jid = job.get("job_id")
@@ -84,6 +96,9 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
             continue
         if not _in_scope(job, now_ct, cfg):
             continue
+
+        marker_note = markers_mod.job_marker_note(job, cfg)
+        marked = markers_mod.parse(marker_note)
 
         thread = threads.get(phone, [])
         st = state_mod.derive(job, thread, now_ct, cfg, classifier)
@@ -95,46 +110,60 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
         if stage == "closeout_reply":
             if not cfg["escalation"].get("notify_on_closeout_reply", True):
                 continue
-            if state_mod.already_escalated(job, anderson_thread, now_ct, cfg):
+            if "escalated" in marked or state_mod.already_escalated(job, anderson_thread, now_ct, cfg):
                 actions.append(Action("note", jid, "closeout_reply",
                                       meta={"skipped": "already alerted Anderson"}))
                 continue
             reply_text = st["last_reply"]["text"] if st["last_reply"] else ""
-            actions.append(Action("notify_anderson", jid, "closeout_reply", to=esc_to,
-                                  body=templates.render_closeout_reply(job, reply_text, cfg),
-                                  meta={"method": cfg["escalation"].get("method", "sms")}))
+            actions.append(send("notify_anderson", jid, "closeout_reply", esc_to,
+                                templates.render_closeout_reply(job, reply_text, cfg),
+                                "escalated", marker_note,
+                                {"method": cfg["escalation"].get("method", "sms")}))
             continue
 
         if stage in ("no_thread", "no_checkin"):
+            if "checkin" in marked:
+                actions.append(Action("note", jid, "checkin",
+                                      meta={"skipped": "checkin marker already on job"}))
+                continue
             due = timing.checkin_due_time(job, cfg)
             if due is None or now_ct < timing.to_ct(due, cfg):
                 continue
             if sent >= max_sends:
                 continue
-            actions.append(Action("send_sms", jid, "checkin", to=phone,
-                                  body=templates.render_check_in(job, cfg),
-                                  meta={"due": due.isoformat()}))
+            actions.append(send("send_sms", jid, "checkin", phone,
+                                templates.render_check_in(job, cfg),
+                                "checkin", marker_note, {"due": due.isoformat()}))
             sent += 1
             continue
 
         if stage == "closeout_pending":
+            if "closeout" in marked:
+                actions.append(Action("note", jid, "closeout",
+                                      meta={"skipped": "closeout marker already on job"}))
+                continue
             ready_at = st["satisfied_at"] + timedelta(minutes=delay_min)
             if now_ct < timing.to_ct(ready_at, cfg):
                 actions.append(Action("note", jid, "closeout",
                                       meta={"waiting_until": ready_at.isoformat()}))
                 continue
             r = templates.render_closeout(job, cfg)
-            actions.append(Action("send_sms", jid, "closeout", to=phone, body=r["body"],
-                                  meta={k: r[k] for k in ("has_quotes", "has_window_block")}))
+            actions.append(send("send_sms", jid, "closeout", phone, r["body"],
+                                "closeout", marker_note,
+                                {k: r[k] for k in ("has_quotes", "has_window_block")}))
             continue
 
         if stage == "send_clarify":
-            actions.append(Action("send_sms", jid, "clarify", to=phone,
-                                  body=templates.render_unclear(cfg)))
+            if "clarify" in marked:
+                actions.append(Action("note", jid, "clarify",
+                                      meta={"skipped": "clarify marker already on job"}))
+                continue
+            actions.append(send("send_sms", jid, "clarify", phone,
+                                templates.render_unclear(cfg), "clarify", marker_note))
             continue
 
         if stage == "needs_escalation":
-            if state_mod.already_escalated(job, anderson_thread, now_ct, cfg):
+            if "escalated" in marked or state_mod.already_escalated(job, anderson_thread, now_ct, cfg):
                 actions.append(Action("note", jid, "escalation",
                                       meta={"skipped": "already alerted Anderson"}))
                 continue
@@ -145,9 +174,9 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
             else:
                 body = templates.render_escalation(job, reply_text, cfg)
                 reason = st.get("classification_reason", "not satisfied")
-            actions.append(Action("notify_anderson", jid, "escalation", to=esc_to,
-                                  body=body, meta={"reason": reason,
-                                                   "method": cfg["escalation"].get("method", "sms")}))
+            actions.append(send("notify_anderson", jid, "escalation", esc_to, body,
+                                "escalated", marker_note,
+                                {"reason": reason, "method": cfg["escalation"].get("method", "sms")}))
             continue
 
     return actions
