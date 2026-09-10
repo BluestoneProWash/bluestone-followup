@@ -42,6 +42,7 @@ def msg(direction, text, at):
 
 def cfg_with(**over):
     c = copy.deepcopy(CFG)
+    c["sending"]["halted"] = False   # test the logic, not the kill switch
     for k, v in over.items():
         section, _, key = k.partition(".")
         c[section][key] = v
@@ -206,6 +207,13 @@ jobs = [
 ]
 now = datetime(2026, 9, 2, 10, 0, tzinfo=CT)   # morning after the job, past 9am
 esc_num = CFG["escalation"]["sms_to"]
+
+# 0. hard kill switch -> zero send/notify actions
+CFG_HALT = cfg_with(**{"sending.job_allowlist": [], "sending.completed_since": "2026-09-01"})
+CFG_HALT["sending"]["halted"] = True
+acts = pipeline.plan(jobs, {}, now, CFG_HALT)
+check("halted -> no send/notify actions",
+      not [a for a in acts if a.kind in ("send_sms", "notify_anderson")], [a.as_dict() for a in acts])
 
 # 1. no threads -> two check-ins
 acts = pipeline.plan(jobs, {}, now, CFGP)

@@ -62,6 +62,12 @@ def _in_scope(job: dict, now_ct: datetime, cfg: Any) -> bool:
 
 def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
          cfg: Any, classifier=None) -> list[Action]:
+    # Hard kill switch. When set, NOTHING is ever sent - no check-in, closeout,
+    # clarify, or Anderson alert. Independent of dry_run and the routine's
+    # enabled flag. Set while the idempotency rebuild is in progress.
+    if cfg["sending"].get("halted"):
+        return [Action("note", None, "halted", meta={"halted": True})]
+
     now_ct = timing.to_ct(now, cfg)
     esc_to = _to(cfg)
     anderson_thread = threads.get(esc_to or "", [])

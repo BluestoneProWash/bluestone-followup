@@ -209,7 +209,14 @@ sending:
   from_number: "${BLUESTONE_FROM_NUMBER:-}"
 
   # true = log what WOULD be sent, send nothing. false = actually send.
-  dry_run: true    # HALTED 2026-09-09: conversation-read idempotency proven unreliable (Summer O'Neal got repeat sends). Rebuilding with job-indicator state before re-enabling.
+  dry_run: true
+
+  # HARD KILL SWITCH. true = the engine returns zero send/notify actions, always.
+  # Independent of dry_run and of the routine being enabled. Set 2026-09-09 while
+  # rebuilding idempotency (conversation reads don't reflect our own sends -
+  # Summer O'Neal got repeat closeouts). Do NOT clear until the job-indicator
+  # marker system is built, tested, and the routine has run clean.
+  halted: true
 
   respect_opt_outs: true         # never message a number that replied STOP
   a2p_10dlc_registered: true     # confirmed 2026-09-02

@@ -29,6 +29,9 @@ env $BSENV python3 -m bluestone.engine status
 `env BLUESTONE_ESCALATION_SMS=... BLUESTONE_FROM_NUMBER=...` prefix each time, or
 re-export `BSENV` at the top of each command.)
 
+If `plan` output contains a `{"stage": "halted"}` note, the kill switch is on:
+**send nothing, do nothing, just report "halted" and stop.**
+
 `status` echoes `dry_run` and `job_allowlist`. **`status` is the authority on
 `dry_run` — not any hint in your prompt.**
 - `dry_run: true`  → run `plan`, send NOTHING, just write the summary.
