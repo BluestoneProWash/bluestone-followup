@@ -212,11 +212,11 @@ sending:
   dry_run: true
 
   # HARD KILL SWITCH. true = the engine returns zero send/notify actions, always.
-  # Independent of dry_run and of the routine being enabled. Set 2026-09-09 while
-  # rebuilding idempotency (conversation reads don't reflect our own sends -
-  # Summer O'Neal got repeat closeouts). Do NOT clear until the job-indicator
-  # marker system is built, tested, and the routine has run clean.
-  halted: true
+  # Independent of dry_run and of the routine being enabled.
+  # Cleared 2026-09-14: job-indicator marker system built + read/write verified
+  # via MCP. Re-enabling in dry_run first to watch it decide correctly before
+  # any real send.
+  halted: false
 
   respect_opt_outs: true         # never message a number that replied STOP
   a2p_10dlc_registered: true     # confirmed 2026-09-02
@@ -235,7 +235,7 @@ sending:
   job_allowlist:
     - ec9395fb-c5d2-4e8c-9df5-47d709effb24   # LIVE TEST: Alex Roth, Sep 9, PW + Window Cleaning
     - 6084af96-066b-452e-9b2c-192dce2fee7e   # LIVE TEST: Mallorie Petrusson, Sep 9, Window Cleaning only
-    - 83c44419-d774-4e85-9d3d-4d75f63cc2de   # TEST: Summer O'Neal, Sep 8, Window Cleaning (full-cycle + post-closeout-reply)
+    # Summer O'Neal test job (83c44419) was deleted from RevDek - removed 2026-09-14
 
 guardrails:
   # Never send closeout without an explicit SATISFIED classification.
