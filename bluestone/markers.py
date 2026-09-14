@@ -25,12 +25,21 @@ def indicator_name(cfg: Any) -> str:
 
 
 def job_marker_note(job: dict, cfg: Any) -> str | None:
-    """The marker indicator's current note text on a normalized job, or None."""
+    """The marker indicator's current note text on a normalized job, or None.
+
+    Defensive: if the job somehow has more than one entry for the marker
+    indicator (shouldn't happen, but a duplicate add_job_indicator call could
+    do it), merge every stage found across ALL of them rather than reading
+    only the first - a stage marked on any entry counts as sent.
+    """
     want = indicator_name(cfg).strip().lower()
-    for ind in job.get("indicators") or []:
-        if (ind.get("name") or "").strip().lower() == want:
-            return ind.get("notes")
-    return None
+    notes = [ind.get("notes") for ind in (job.get("indicators") or [])
+             if (ind.get("name") or "").strip().lower() == want and ind.get("notes")]
+    if not notes:
+        return None
+    if len(notes) == 1:
+        return notes[0]
+    return "\n".join(notes)
 
 
 def parse(note: str | None) -> set[str]:

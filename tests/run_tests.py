@@ -228,6 +228,11 @@ check("escalated line has no 'sent'", markers.add(None, "escalated", datetime(20
 jm = {"indicators": [{"name": "Bluestone Automation", "notes": "checkin sent 2026-09-10T14:00:00Z"}]}
 check("job_marker_note by indicator name", markers.job_marker_note(jm, CFG) == "checkin sent 2026-09-10T14:00:00Z")
 check("job_marker_note none when absent", markers.job_marker_note({"indicators": []}, CFG) is None)
+jm_dup = {"indicators": [{"name": "Bluestone Automation", "notes": "checkin sent 2026-09-10T14:00:00Z"},
+                         {"name": "Bluestone Automation", "notes": "closeout sent 2026-09-10T16:00:00Z"}]}
+check("job_marker_note merges duplicate indicator entries",
+      markers.parse(markers.job_marker_note(jm_dup, CFG)) == {"checkin", "closeout"},
+      markers.job_marker_note(jm_dup, CFG))
 
 # marker suppresses a resend even when the thread is stale
 jobs_m = [normalize_job({"id": "M", "service_type": ["House Wash"], "price": 300, "date": "2026-09-01",
