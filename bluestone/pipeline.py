@@ -76,6 +76,29 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
 
     now_ct = timing.to_ct(now, cfg)
     esc_to = _to(cfg)
+    # An unresolved ${VAR} means the env-var prefix was dropped on this call -
+    # refuse to do anything rather than let an escalation try to "send" to a
+    # literal template string, or proceed on a half-loaded config.
+    if not esc_to or "${" in esc_to:
+        return [Action("note", None, "config_error",
+                       meta={"error": "escalation contact unresolved - "
+                                       "BLUESTONE_ESCALATION_SMS/EMAIL env var "
+                                       "was not set for this command"})]
+
+    # De-dupe by job_id: two entries for the same job (a sloppy jobs.json merge)
+    # must never turn into two send actions in one plan() call - that would
+    # both go out before either marker write happens.
+    seen_ids: set = set()
+    deduped = []
+    for j in jobs:
+        jid_ = j.get("job_id")
+        if jid_ in seen_ids:
+            continue
+        if jid_ is not None:
+            seen_ids.add(jid_)
+        deduped.append(j)
+    jobs = deduped
+
     anderson_thread = threads.get(esc_to or "", [])
     max_sends = int(cfg["poller"].get("max_sends_per_run", 25))
     delay_min = int(cfg.get("closeout", {}).get("delay_minutes_after_satisfied", 0))

@@ -39,6 +39,10 @@ re-export `BSENV` at the top of each command.)
 If `plan` output contains a `{"stage": "halted"}` note, the kill switch is on:
 **send nothing, do nothing, just report "halted" and stop.**
 
+If it contains a `{"stage": "config_error"}` note, the escalation contact env var
+wasn't set on this command (check you used the `env BLUESTONE_ESCALATION_SMS=...`
+prefix). **Send nothing.** Fix the command and it should resolve next run.
+
 **Marker indicator preflight:** call `list_indicators` and confirm a
 **"Bluestone Automation"** indicator exists and is enabled. If it is missing or
 disabled, **STOP the run — send nothing** — and report that the marker indicator

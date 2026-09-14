@@ -253,6 +253,23 @@ check("checkin action carries marker + note + indicator",
       ck.marker == "checkin" and "checkin sent" in ck.marker_note_after
       and ck.marker_indicator == "Bluestone Automation", ck.as_dict())
 
+# unresolved ${VAR} escalation contact -> refuse to do anything this run
+CFG_UNRESOLVED = cfg_with(**{"sending.job_allowlist": [], "sending.completed_since": "2026-09-01"})
+CFG_UNRESOLVED["escalation"]["sms_to"] = "${BLUESTONE_ESCALATION_SMS}"
+acts = pipeline.plan(jobs, {}, now, CFG_UNRESOLVED)
+check("unresolved escalation contact -> single config_error note, nothing else",
+      len(acts) == 1 and acts[0].stage == "config_error", [a.as_dict() for a in acts])
+
+# duplicate job entries in one call -> only one action, never two sends
+dup_job = normalize_job({"id": "DUP", "service_type": ["House Wash"], "price": 300, "date": "2026-09-01",
+                         "end_time": "12:00:00", "completed": True, "notes": "x",
+                         "customer": {"first_name": "Doug", "last_name": "R"}},
+                        {"first_name": "Doug", "last_name": "R", "phone": "+12055550303"})
+acts = pipeline.plan([dup_job, dup_job, dup_job], {}, now, CFGP)
+check("duplicate job entries collapse to one action",
+      len([a for a in acts if a.kind == "send_sms" and a.job_id == "DUP"]) == 1,
+      [a.as_dict() for a in acts])
+
 # 1. no threads -> two check-ins
 acts = pipeline.plan(jobs, {}, now, CFGP)
 check("both check-ins planned", len([a for a in acts if a.stage == "checkin"]) == 2, [a.as_dict() for a in acts])
