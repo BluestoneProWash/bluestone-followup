@@ -209,7 +209,7 @@ sending:
   from_number: "${BLUESTONE_FROM_NUMBER:-}"
 
   # true = log what WOULD be sent, send nothing. false = actually send.
-  dry_run: true
+  dry_run: false
 
   # HARD KILL SWITCH. true = the engine returns zero send/notify actions, always.
   # Independent of dry_run and of the routine being enabled.
@@ -241,7 +241,10 @@ sending:
   # below matches no real job, so the list stays non-empty (restrictive) with
   # nothing in scope until a real test job ID replaces it.
   job_allowlist:
-    - PENDING-TEST-JOB-NONE-IN-SCOPE
+    - c7f13914-20b5-446a-9275-2804ae2060e9   # TEST: Summer O'Neal, Sep 14, PW + Window Cleaning (bundled % window line, has quotes)
+    - be811768-9a44-4241-bbdb-48667b4b7eae   # TEST: Dad Oneal, Sep 14, Window Cleaning only (priced window line, no quotes)
+    # Keith S (ea63702c-368f-422e-a22b-31ef96130860) is a REAL customer completed same day -
+    # deliberately NOT listed. Do not add him until we're fully confident and ready to go live.
 
 guardrails:
   # Never send closeout without an explicit SATISFIED classification.
