@@ -232,10 +232,16 @@ sending:
 
   # Test scoping: when this list is non-empty, ONLY these job IDs are ever
   # followed up - every other completed job is ignored. Empty [] = normal operation.
+  # Real customers Alex Roth / Mallorie Petrusson removed 2026-09-14 - not
+  # touching real customers until the marker system has proven out on a
+  # fresh, disposable test job first. Add ONLY test job IDs below.
+  #
+  # IMPORTANT: an EMPTY list here means "no restriction" - every completed job
+  # in RevDek is in scope. Never leave this empty while testing. The placeholder
+  # below matches no real job, so the list stays non-empty (restrictive) with
+  # nothing in scope until a real test job ID replaces it.
   job_allowlist:
-    - ec9395fb-c5d2-4e8c-9df5-47d709effb24   # LIVE TEST: Alex Roth, Sep 9, PW + Window Cleaning
-    - 6084af96-066b-452e-9b2c-192dce2fee7e   # LIVE TEST: Mallorie Petrusson, Sep 9, Window Cleaning only
-    # Summer O'Neal test job (83c44419) was deleted from RevDek - removed 2026-09-14
+    - PENDING-TEST-JOB-NONE-IN-SCOPE
 
 guardrails:
   # Never send closeout without an explicit SATISFIED classification.
