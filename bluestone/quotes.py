@@ -13,6 +13,11 @@ Notes format (fallback):
 Tolerated either way: "$700" / "$700.00" / "$1,200", colon/dash before price,
 price-first ("$300 windows"), commas / newlines / semicolons as separators.
 An entry is only kept if it has BOTH a service name AND a price.
+
+Also tolerated: a bare leading number with no $ sign and no dollar sign at
+all, e.g. "750 roof, she said she would wait" -> roof $750. Only kicks in
+above `quote_parsing.bare_number_min_amount`, so small incidental numbers
+("2 window screens") aren't misread as prices.
 """
 from __future__ import annotations
 
@@ -23,11 +28,12 @@ _HEADER_RE = re.compile(r"future\s+quotes?\s*[:\-–]?\s*", re.IGNORECASE)
 _NUM = r"([0-9][0-9,]*(?:\.[0-9]{1,2})?)"
 _PRICE_END_RE = re.compile(r"\$?\s*" + _NUM + r"\s*$")          # "roof wash $700"
 _PRICE_START_RE = re.compile(r"^\$\s*" + _NUM + r"\s*[:\-–]?\s*(.+)$")  # "$700 roof wash"
+_PRICE_START_BARE_RE = re.compile(r"^" + _NUM + r"\s*[:\-–]?\s*([A-Za-z].*)$")  # "750 roof"
 
 CLOSING_QUOTES_INDICATOR = "closing quotes"   # matched case-insensitively in the name
 
 
-def _parse_fragments(text: str) -> list[dict]:
+def _parse_fragments(text: str, min_bare_amount: int = 0) -> list[dict]:
     """Split on commas/newlines/semicolons, keep only 'service + price' pieces."""
     if not text:
         return []
@@ -47,6 +53,11 @@ def _parse_fragments(text: str) -> list[dict]:
             if pm:
                 amount = pm.group(1)
                 service = pm.group(2).strip().lstrip(":-– ").strip()
+            else:
+                pm = _PRICE_START_BARE_RE.match(frag)
+                if pm and float(pm.group(1).replace(",", "")) >= min_bare_amount:
+                    amount = pm.group(1)
+                    service = pm.group(2).strip().lstrip(":-– ").strip()
         if not amount or not service:
             continue   # must have BOTH a service and a price
         amount = amount.replace(",", "")
@@ -67,12 +78,14 @@ def parse_future_quotes(notes: str | None, cfg: Any) -> list[dict]:
         return []
     tail = notes[m.end():]
     tail = re.split(r"\n\s*\n", tail, maxsplit=1)[0]   # stop at a blank line
-    return _parse_fragments(tail)
+    min_bare = cfg["quote_parsing"].get("bare_number_min_amount", 20)
+    return _parse_fragments(tail, min_bare)
 
 
 def parse_closing_quotes(indicator_note: str | None, cfg: Any) -> list[dict]:
     """Quotes from the 'Closing Quotes Given' indicator's note text."""
-    return _parse_fragments(indicator_note or "")
+    min_bare = cfg["quote_parsing"].get("bare_number_min_amount", 20)
+    return _parse_fragments(indicator_note or "", min_bare)
 
 
 def parse_job_quotes(job: dict, cfg: Any) -> list[dict]:

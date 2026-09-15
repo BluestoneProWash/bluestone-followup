@@ -165,6 +165,11 @@ quote_parsing:
   line_format: "- [service]: $[amount]"
   # Title-case the service name when rendering (roof wash -> Roof Wash).
   titlecase_service: true
+  # Techs sometimes write the price with no $ sign, number first, e.g.
+  # "750 roof, she said she would wait". A bare leading number is only
+  # treated as a price if it's at least this much - keeps small incidental
+  # numbers ("2 window screens", "3 dogs on site") from being read as quotes.
+  bare_number_min_amount: 20
 
 # ---------------------------------------------------------------------------
 # 4b. WINDOW CLEANING SERVICE PLANS
@@ -247,8 +252,9 @@ sending:
   job_allowlist:
     - c7f13914-20b5-446a-9275-2804ae2060e9   # TEST: Summer O'Neal, Sep 14, PW + Window Cleaning (bundled % window line, has quotes)
     - be811768-9a44-4241-bbdb-48667b4b7eae   # TEST: Dad Oneal, Sep 14, Window Cleaning only (priced window line, no quotes)
-    # Keith S (ea63702c-368f-422e-a22b-31ef96130860) is a REAL customer completed same day -
-    # deliberately NOT listed. Do not add him until we're fully confident and ready to go live.
+    - 0dada505-63c9-45e1-8b3e-cc14c9d01cc4   # Kay Harrison, Sep 15, PW + Window Cleaning - FIRST REAL CUSTOMER, live 9/16
+    # Keith S (ea63702c-368f-422e-a22b-31ef96130860) is a REAL customer completed same day as
+    # the Sep 14 tests - deliberately NOT listed.
 
 guardrails:
   # Never send closeout without an explicit SATISFIED classification.

@@ -86,6 +86,11 @@ check("no indicator -> notes", quotes.parse_job_quotes({"notes": "future quotes:
 check("normalize_job pulls indicator note",
       normalize_job({"id": "x", "date": "2026-09-02", "indicators": [
           {"name": "Closing Quotes Given", "notes": "Windows -$300"}]}, None)["closing_quotes_note"] == "Windows -$300")
+# bare leading number, no $ sign, price-first with trailing unrelated narrative (real tech note)
+bare = quotes.parse_closing_quotes("750 roof, she said she would wait", CFG)
+check("bare leading number parses as a price", bare == [{"service": "roof", "amount": "750"}], bare)
+check("small incidental numbers below threshold are not prices",
+      quotes.parse_closing_quotes("2 window screens, 3 dogs on site", CFG) == [])
 
 print("window plans")
 check("no window svc", window_plans.render_window_block(["Pressure Washing"], 400, CFG) == "")
