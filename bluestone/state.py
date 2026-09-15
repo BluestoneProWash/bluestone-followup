@@ -43,10 +43,6 @@ def is_closeout(text: str, cfg: Any) -> bool:
     return bool(opener) and n.startswith(opener)
 
 
-def is_clarify(text: str, cfg: Any) -> bool:
-    return _norm(templates.render_unclear(cfg)) in _norm(text)
-
-
 def is_stop(text: str) -> bool:
     return _norm(text).strip(" .!?") in STOP_WORDS
 
@@ -57,7 +53,7 @@ def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
     """Return the current follow-up state of one job.
 
     stage: no_thread | no_checkin | awaiting_reply | closeout_pending |
-           closed_satisfied | clarifying | escalated | opted_out
+           closed_satisfied | closeout_reply | needs_escalation | opted_out
 
     Only messages from at/after this job happened are considered - a prior
     follow-up cycle with the same customer (or unrelated older chatter) must not
@@ -73,7 +69,7 @@ def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
 
     st: dict[str, Any] = {"stage": "no_checkin", "checkin_at": None,
                           "replies_after_checkin": [], "replies_after_closeout": [],
-                          "clarify_count": 0, "closeout_sent": False, "opted_out": False,
+                          "closeout_sent": False, "opted_out": False,
                           "last_reply": None, "classification": None}
 
     if any(is_stop(m["text"]) for m in inb):
@@ -90,8 +86,6 @@ def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
     after = [m for m in msgs if m["at"] > checkin["at"]]
     replies = [m for m in after if m["direction"] == "inbound" and not is_stop(m["text"])]
     st["replies_after_checkin"] = replies
-    st["clarify_count"] = sum(1 for m in after
-                              if m["direction"] == "outbound" and is_clarify(m["text"], cfg))
     closeout_msg = next((m for m in after
                          if m["direction"] == "outbound" and is_closeout(m["text"], cfg)), None)
     st["closeout_sent"] = closeout_msg is not None
@@ -118,24 +112,15 @@ def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
     st["classification"] = result
     st["classification_reason"] = reason
 
-    # have we already sent something in reply to this latest customer message?
-    responded_after_last = any(m["direction"] == "outbound" and m["at"] > last["at"]
-                               for m in after)
-    limit = int(cfg["classification"].get("unclear_retry_limit", 1))
-
     if result == "SATISFIED":
         st["stage"] = "closeout_pending"
         st["satisfied_at"] = last["at"]
-    elif result in ("DISSATISFIED", "CONTACT_REQUEST"):
-        st["stage"] = "needs_escalation"
-    elif responded_after_last:
-        # UNCLEAR but we already sent the clarify - wait for their next reply
-        st["stage"] = "awaiting_reply"
-    elif st["clarify_count"] < limit:
-        st["stage"] = "send_clarify"
     else:
+        # DISSATISFIED, CONTACT_REQUEST, and UNCLEAR all go straight to
+        # Anderson - no automated clarifying text. Asking "did everything turn
+        # out well?" again after an ambiguous or even a clearly negative reply
+        # reads as tone-deaf; a person should take it from here instead.
         st["stage"] = "needs_escalation"
-        st["classification_reason"] = f"still unclear after {st['clarify_count']} clarify"
     return st
 
 

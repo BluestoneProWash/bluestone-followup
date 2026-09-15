@@ -8,20 +8,25 @@ classifies it, and branches:
   done), referral offer, review link.
 - **Not satisfied** → stops, texts Anderson to handle it personally.
 - **Wants a callback** ("call me") → stops, texts Anderson.
-- **Unclear** → one clarifying text, then escalate.
+- **Unclear** (or anything else short of clearly satisfied) → stops, texts
+  Anderson. No automated clarifying text - asking "did everything turn out
+  well?" again after an ambiguous or negative reply reads as tone-deaf.
 - **STOP** → opted out, never texted again.
 
 ## Design
 
-**Stateless.** No database. Every run, the engine reads the RevDek conversation
-threads and works out what to do from what's already been said. That means the
-cloud runner only needs to *read* the repo and RevDek — nothing to persist.
+Every run, the engine reads jobs and conversation threads from RevDek and
+decides what to do. Idempotency (never send the same thing twice) comes from a
+**"Bluestone Automation" job indicator** the automation stamps after every
+send and checks before sending - not from the conversation, which only syncs
+into RevDek when a human opens the inbox and so can't be trusted for that.
 
 | Path | What |
 |---|---|
 | `config.yml` | Every tunable setting. Timing, templates, discounts. |
 | `bluestone/` | The engine (pure functions). |
-| `bluestone/state.py` | Reads follow-up state out of a conversation thread. |
+| `bluestone/state.py` | Reads reply/closeout state out of a conversation thread. |
+| `bluestone/markers.py` | The "Bluestone Automation" job-indicator idempotency markers. |
 | `bluestone/pipeline.py` | `plan(jobs, threads, now, cfg)` → list of actions. |
 | `bluestone/engine.py` | CLI: `preview`, `plan`, `status`. |
 | `CLOUD_RUNNER.md` | What the hourly cloud routine does. |
@@ -49,5 +54,8 @@ python3 tests/run_tests.py
 - Check-in goes out at **9:00 AM CT the morning after the job**
   (`initial_followup.schedule: next_morning`). Switch to `hours_after_end` in
   config for "N hours after the scheduled end time" instead.
-- **`dry_run: true`** until reviewed. `sending.job_allowlist` limits it to
-  specific test jobs; empty the list to go live for all jobs.
+- `sending.job_allowlist` limits it to specific test job IDs. **An EMPTY list
+  means no restriction — every completed job in RevDek is in scope.** Never
+  leave it empty while testing; use a placeholder ID that matches nothing.
+- `sending.halted: true` is a hard kill switch (send nothing, ever) independent
+  of everything else. `sending.dry_run: true` logs without sending.

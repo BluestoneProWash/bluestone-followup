@@ -104,7 +104,7 @@ Prints `{"dry_run":..., "actions":[...]}`. Each action:
 
 | kind | stage | meaning |
 |---|---|---|
-| `send_sms` | `checkin` / `closeout` / `clarify` | send `body` to `to` (the customer) |
+| `send_sms` | `checkin` / `closeout` | send `body` to `to` (the customer) |
 | `notify_anderson` | `escalation` / `closeout_reply` | send `body` to `to` (the escalation number) — **NOT the customer** |
 | `note` | anything | informational — do nothing, no marker |
 

@@ -23,7 +23,7 @@ from . import timing
 class Action:
     kind: str            # send_sms | notify_anderson | note
     job_id: str | None
-    stage: str           # checkin | closeout | clarify | escalation | closeout_reply
+    stage: str           # checkin | closeout | escalation | closeout_reply
     to: str | None = None
     body: str = ""
     marker: str | None = None       # marker stage to record after this send succeeds
@@ -69,8 +69,7 @@ def _in_scope(job: dict, now_ct: datetime, cfg: Any) -> bool:
 def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
          cfg: Any, classifier=None) -> list[Action]:
     # Hard kill switch. When set, NOTHING is ever sent - no check-in, closeout,
-    # clarify, or Anderson alert. Independent of dry_run and the routine's
-    # enabled flag. Set while the idempotency rebuild is in progress.
+    # or Anderson alert. Independent of dry_run and the routine's enabled flag.
     if cfg["sending"].get("halted"):
         return [Action("note", None, "halted", meta={"halted": True})]
 
@@ -174,15 +173,6 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
             actions.append(send("send_sms", jid, "closeout", phone, r["body"],
                                 "closeout", marker_note,
                                 {k: r[k] for k in ("has_quotes", "has_window_block")}))
-            continue
-
-        if stage == "send_clarify":
-            if "clarify" in marked:
-                actions.append(Action("note", jid, "clarify",
-                                      meta={"skipped": "clarify marker already on job"}))
-                continue
-            actions.append(send("send_sms", jid, "clarify", phone,
-                                templates.render_unclear(cfg), "clarify", marker_note))
             continue
 
         if stage == "needs_escalation":

@@ -10,14 +10,18 @@ The marker indicator's `notes` field holds one line per stage:
     closeout sent 2026-09-10T15:20:00Z
     escalated 2026-09-10T15:05:00Z
 
-`stage` is the first token of each line: checkin | closeout | clarify | escalated
+`stage` is the first token of each line: checkin | closeout | escalated
+
+Note: a job followed up before 2026-09-15 may still carry an old "clarify sent
+..." line from the since-removed clarifying-text step. That token is simply
+unrecognized now and ignored - harmless.
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
 
-STAGES = ("checkin", "closeout", "clarify", "escalated")
+STAGES = ("checkin", "closeout", "escalated")
 
 
 def indicator_name(cfg: Any) -> str:

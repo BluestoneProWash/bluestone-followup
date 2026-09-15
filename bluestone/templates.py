@@ -72,10 +72,6 @@ def render_closeout(job: dict, cfg: Any) -> dict:
     }
 
 
-def render_unclear(cfg: Any) -> str:
-    return _tidy(_fill(cfg["templates"]["unclear_clarify"], base_values(cfg)))
-
-
 def render_contact_request(job: dict, reply_text: str, cfg: Any) -> str:
     values = base_values(cfg)
     values.update(

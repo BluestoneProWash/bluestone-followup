@@ -59,7 +59,11 @@ classification:
   model: claude-sonnet-5
   # Buckets the reply is sorted into. Do not rename without updating the branches.
   # SATISFIED / DISSATISFIED / UNCLEAR / CONTACT_REQUEST
-  unclear_retry_limit: 1          # clarifying texts before escalating to Anderson
+  # Only SATISFIED gets the automated closeout. Everything else (DISSATISFIED,
+  # CONTACT_REQUEST, and UNCLEAR) goes straight to Anderson - there is no
+  # automated clarifying text. Re-asking "did everything turn out well?" after
+  # an ambiguous or negative reply reads as tone-deaf, so a person takes it
+  # from there instead.
   system_prompt: |
     You classify a customer's SMS reply to a "how did the job turn out?" text
     from a pressure-washing company. Respond with exactly one word:
@@ -67,8 +71,11 @@ classification:
     - CONTACT_REQUEST: they want a person to reach out - "call me", "have someone
       call", "text me back", "I want to talk to someone". Use this even if the
       tone is neutral or positive. It takes priority over the others.
-    - SATISFIED: clearly positive / happy / no complaints.
-    - DISSATISFIED: any complaint, disappointment, unresolved issue, or negative tone.
+    - SATISFIED: clearly positive / happy / no complaints AT ALL. If they mention
+      anything - even one small negative detail alongside praise - do not use
+      SATISFIED.
+    - DISSATISFIED: any complaint, disappointment, unresolved issue, or negative
+      tone - even a minor one mentioned alongside otherwise positive comments.
     - UNCLEAR: ambiguous, off-topic, a question, or not enough to tell.
     When in doubt between SATISFIED and DISSATISFIED, choose UNCLEAR.
 
@@ -120,9 +127,6 @@ templates:
   # Window cleaning ONLY - real plan price off this job's price.
   window_plan_block_priced: |
     Since we did your windows - we offer window cleaning service plans: semi-annual at $[semi_annual_price]/visit ([semi_annual_pct]% off), or quarterly at $[quarterly_price]/visit ([quarterly_pct]% off).
-
-  unclear_clarify: |
-    Just want to make sure we got that right - did everything turn out well?
 
   # Goes to Anderson when a reply asks for a callback / to talk to someone.
   # Nothing is sent to the customer - Anderson calls them.

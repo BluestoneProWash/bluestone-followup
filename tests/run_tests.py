@@ -134,7 +134,6 @@ check("11 digit", normalize_phone("1 205 555 0142") == "+12055550142")
 print("state.derive")
 CHECKIN = templates.render_check_in(job, CFG)
 CLOSEOUT = templates.render_closeout(job, CFG)["body"]
-CLARIFY = templates.render_unclear(CFG)
 t0 = datetime(2026, 9, 2, 12, 0, tzinfo=CT)
 
 check("empty thread -> no_thread",
@@ -160,14 +159,13 @@ th_neg = [msg("outbound", CHECKIN, t0), msg("inbound", "there are still streaks 
 check("negative reply -> needs_escalation",
       state.derive(job, th_neg, t0 + timedelta(minutes=6), CFG)["stage"] == "needs_escalation")
 th_unclear = [msg("outbound", CHECKIN, t0), msg("inbound", "hmm", t0 + timedelta(minutes=5))]
-check("unclear, no clarify yet -> send_clarify",
-      state.derive(job, th_unclear, t0 + timedelta(minutes=6), CFG)["stage"] == "send_clarify")
-th_unclear2 = th_unclear + [msg("outbound", CLARIFY, t0 + timedelta(minutes=7))]
-check("unclear, clarify already sent -> awaiting_reply",
-      state.derive(job, th_unclear2, t0 + timedelta(minutes=8), CFG)["stage"] == "awaiting_reply")
-th_unclear3 = th_unclear2 + [msg("inbound", "still not sure what you mean", t0 + timedelta(minutes=20))]
-check("2nd unclear after clarify -> needs_escalation",
-      state.derive(job, th_unclear3, t0 + timedelta(minutes=21), CFG)["stage"] == "needs_escalation")
+check("unclear -> needs_escalation directly (no clarifying text)",
+      state.derive(job, th_unclear, t0 + timedelta(minutes=6), CFG)["stage"] == "needs_escalation")
+th_mixed = [msg("outbound", CHECKIN, t0),
+           msg("inbound", "everything was good except some grease stains on the driveway",
+               t0 + timedelta(minutes=5))]
+check("mixed positive+negative reply -> needs_escalation, not closeout_pending",
+      state.derive(job, th_mixed, t0 + timedelta(minutes=6), CFG)["stage"] == "needs_escalation")
 check("checkin detection tolerates different first name",
       state.is_checkin("Hey Bob this is Anderson. Thank you for your business we really appreciate it! How did everything turn out?", job, CFG))
 # a prior completed follow-up cycle for the same number must NOT suppress a new job
@@ -223,7 +221,9 @@ n1 = markers.add(n0, "closeout", datetime(2026, 9, 10, 15, 20, tzinfo=timezone.u
 check("add closeout appends line", n1.splitlines()[-1] == "closeout sent 2026-09-10T15:20:00Z", n1)
 check("add is idempotent", markers.add(n1, "checkin", datetime(2026, 9, 11, tzinfo=timezone.utc)) == n1)
 check("parse", markers.parse(n1) == {"checkin", "closeout"})
-check("has", markers.has(n1, "closeout") and not markers.has(n1, "clarify"))
+check("has", markers.has(n1, "closeout") and not markers.has(n1, "escalated"))
+check("unrecognized 'clarify' token in an old note is ignored, not an error",
+      markers.parse("clarify sent 2026-09-01T00:00:00Z") == set())
 check("escalated line has no 'sent'", markers.add(None, "escalated", datetime(2026, 9, 10, tzinfo=timezone.utc)) == "escalated 2026-09-10T00:00:00Z")
 jm = {"indicators": [{"name": "Bluestone Automation", "notes": "checkin sent 2026-09-10T14:00:00Z"}]}
 check("job_marker_note by indicator name", markers.job_marker_note(jm, CFG) == "checkin sent 2026-09-10T14:00:00Z")
