@@ -184,11 +184,11 @@ old_cycle = [msg("outbound", CHECKIN, datetime(2026, 9, 1, 9, 0, tzinfo=CT)),
 check("old cycle before this job's date is ignored -> no_thread",
       state.derive(job_new, old_cycle, datetime(2026, 9, 6, 10, 0, tzinfo=CT), CFG)["stage"] == "no_thread")
 
-print("state.derive - 'Confirmed Satisfied' manual override")
+print("state.derive - 'Skip to Closing Text' manual override")
 job_fs = normalize_job({"id": "fs1", "service_type": ["House Wash"], "price": 350, "date": "2026-09-01",
                         "end_time": "12:00:00", "notes": "x",
                         "customer": {"first_name": "Amy", "last_name": "Ray"},
-                        "indicators": [{"name": "Confirmed Satisfied", "notes": None}]},
+                        "indicators": [{"name": "Skip to Closing Text", "notes": None}]},
                        {"first_name": "Amy", "last_name": "Ray", "phone": "+12055551234"})
 check("force_satisfied flag extracted from indicator", job_fs["force_satisfied"] is True)
 check("no thread at all -> still fast-tracked to closeout_pending",
@@ -200,13 +200,24 @@ check("would-have-escalated reply -> overridden to closeout_pending",
       state.derive(job_fs, th_fs_neg, t0 + timedelta(minutes=6), CFG)["stage"] == "closeout_pending")
 check("STOP still wins over the override -> opted_out",
       state.derive(job_fs, [msg("inbound", "STOP", t0)], t0, CFG)["stage"] == "opted_out")
-th_fs_done = [msg("outbound", CHECKIN, t0), msg("inbound", "looks great", t0 + timedelta(minutes=5)),
-             msg("outbound", CLOSEOUT, t0 + timedelta(minutes=10))]
-check("closeout already sent -> not resurrected (closed_satisfied, no resend)",
-      state.derive(job_fs, th_fs_done, t0 + timedelta(hours=1), CFG)["stage"] == "closed_satisfied")
+check("satisfied_at is the next-morning slot, not immediate",
+      state.derive(job_fs, [], t0, CFG)["satisfied_at"] == timing.checkin_due_time(job_fs, CFG))
 job_no_fs = normalize_job({"id": "nofs", "service_type": ["House Wash"], "price": 350, "date": "2026-09-01",
                            "notes": "x", "customer": {"first_name": "Amy", "last_name": "Ray"}}, None)
 check("job without the indicator -> flag is False", job_no_fs["force_satisfied"] is False)
+
+# closeout via the override has a different opener, and the thread-based
+# stage machine must still recognize it (no check-in ever precedes it) so a
+# reply after it correctly triggers closeout_reply, not an infinite resend.
+FS_CLOSEOUT = templates.render_closeout(job_fs, CFG)["body"]
+check("override opener is the 'thanks again' line, not 'Glad to hear it!'",
+      FS_CLOSEOUT.startswith("Hey Amy thanks again for your business!"), FS_CLOSEOUT[:60])
+th_fs_sent = [msg("outbound", FS_CLOSEOUT, t0 + timedelta(minutes=2))]
+check("override closeout recognized with no check-in in thread -> closed_satisfied",
+      state.derive(job_fs, th_fs_sent, t0 + timedelta(hours=1), CFG)["stage"] == "closed_satisfied")
+th_fs_reply = th_fs_sent + [msg("inbound", "thanks, i'll keep the quote in mind", t0 + timedelta(minutes=5))]
+check("reply after override closeout -> closeout_reply (not re-triggered as closeout_pending)",
+      state.derive(job_fs, th_fs_reply, t0 + timedelta(hours=1), CFG)["stage"] == "closeout_reply")
 
 print("state.already_escalated")
 esc_body = templates.render_escalation(job, "bad", CFG)  # contains customer phone +12055551234

@@ -13,10 +13,12 @@ classifies it, and branches:
   well?" again after an ambiguous or negative reply reads as tone-deaf.
 - **STOP** → opted out, never texted again.
 
-**Manual override**: add the **"Confirmed Satisfied"** indicator to a job in
+**Manual override**: add the **"Skip to Closing Text"** indicator to a job in
 RevDek (one tap) if you already know the customer is happy through some other
-channel - e.g. they texted or called you directly. The next hourly run skips
-straight to the closeout text, no check-in or reply needed.
+channel - e.g. they texted or called you directly. No check-in goes out; the
+closeout goes out the next morning at the usual time, opening with "Hey
+[name] thanks again for your business!" instead of "Glad to hear it!" since
+there was no reply to react to.
 
 ## Design
 

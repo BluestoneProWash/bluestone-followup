@@ -46,6 +46,16 @@ def render_check_in(job: dict, cfg: Any) -> str:
     return _tidy(_fill(cfg["templates"]["check_in"], values))
 
 
+def render_closeout_opener(job: dict, cfg: Any) -> str:
+    """The closeout's opening line - varies for the 'Skip to Closing Text'
+    manual override, which has no check-in reply to react to."""
+    values = base_values(cfg)
+    values["first_name"] = job.get("first_name", "there").strip() or "there"
+    key = "closeout_opener_direct" if job.get("force_satisfied") else "closeout_opener_default"
+    template = cfg["templates"].get(key) or cfg["templates"].get("closeout_opener_default", "Glad to hear it!")
+    return _fill(template, values).strip()
+
+
 def render_closeout(job: dict, cfg: Any) -> dict:
     """Return {'body': str, 'has_quotes': bool, 'has_window_block': bool}."""
     parsed = quotes_mod.parse_job_quotes(job, cfg)   # indicator first, notes fallback
@@ -56,7 +66,8 @@ def render_closeout(job: dict, cfg: Any) -> dict:
     )
 
     values = base_values(cfg)
-    values.update({"quote_list": quote_list, "window_plan_block": window_block})
+    values.update({"quote_list": quote_list, "window_plan_block": window_block,
+                   "closeout_opener": render_closeout_opener(job, cfg)})
 
     if parsed:
         template = cfg["templates"]["closeout_with_quotes"]

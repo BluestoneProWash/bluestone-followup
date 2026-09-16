@@ -108,11 +108,12 @@ Prints `{"dry_run":..., "actions":[...]}`. Each action:
 | `notify_anderson` | `escalation` / `closeout_reply` | send `body` to `to` (the escalation number) — **NOT the customer** |
 | `note` | anything | informational — do nothing, no marker |
 
-A job carrying the **"Confirmed Satisfied"** indicator (Anderson's manual
+A job carrying the **"Skip to Closing Text"** indicator (Anderson's manual
 override - he already knows the customer is happy through some other channel)
-skips straight to a `closeout` action, no check-in or reply needed. This is
-handled entirely inside the engine from the `indicators` array you already
-wrote to `jobs.json` in step 1 — nothing extra to do here.
+never gets a `checkin` action; its `closeout` goes out the next morning at the
+usual time instead, with a different opening line. This is handled entirely
+inside the engine from the `indicators` array you already wrote to
+`jobs.json` in step 1 — nothing extra to do here.
 
 ## 4. Execute each action (only if `dry_run` is false)
 

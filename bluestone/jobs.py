@@ -22,11 +22,11 @@ def _closing_quotes_note(raw: dict) -> str | None:
 
 
 def _has_force_satisfied(raw: dict) -> bool:
-    """The 'Confirmed Satisfied' indicator - a manual override Anderson can add
-    in RevDek (same one-tap pattern as 'Closing Quotes Given') to skip straight
-    to the closeout text without waiting on the automated check-in/reply."""
+    """The 'Skip to Closing Text' indicator - a manual override Anderson can add
+    in RevDek (same one-tap pattern as 'Closing Quotes Given') to skip the
+    automated check-in/reply and go straight to the closeout text."""
     for ind in raw.get("indicators") or []:
-        if "confirmed satisfied" in (ind.get("name") or "").lower():
+        if "skip to closing" in (ind.get("name") or "").lower():
             return True
     return False
 

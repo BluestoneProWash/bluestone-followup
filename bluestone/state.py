@@ -37,9 +37,9 @@ def is_checkin(text: str, job: dict, cfg: Any) -> bool:
     return bool(tail) and tail in n
 
 
-def is_closeout(text: str, cfg: Any) -> bool:
+def is_closeout(text: str, job: dict, cfg: Any) -> bool:
     n = _norm(text)
-    opener = _norm(cfg["templates"]["closeout_no_quotes"].split("\n", 1)[0])
+    opener = _norm(templates.render_closeout_opener(job, cfg))
     return bool(opener) and n.startswith(opener)
 
 
@@ -52,18 +52,19 @@ def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
            classifier=None) -> dict:
     """Return the current follow-up state of one job. See _derive_base below
     for the stage list and thread-reading logic; this wrapper applies the
-    'Confirmed Satisfied' manual override on top of it."""
+    'Skip to Closing Text' manual override on top of it."""
     st = _derive_base(job, thread, now, cfg, classifier)
-    # Manual override: Anderson (or a tech) adds the "Confirmed Satisfied"
+    # Manual override: Anderson (or a tech) adds the "Skip to Closing Text"
     # indicator in RevDek - e.g. the customer thanked him directly instead of
-    # replying to the automated check-in - and the next run skips straight to
-    # the closeout text. Never resurrects a job that's opted out or already
-    # had its closeout sent/replied-to.
+    # replying to the automated check-in - and the closeout goes out at the
+    # same next-morning time a normal check-in would have, just without ever
+    # sending the check-in or waiting on a reply. Never resurrects a job
+    # that's opted out or already had its closeout sent/replied-to.
     if job.get("force_satisfied") and st["stage"] not in ("opted_out", "closed_satisfied", "closeout_reply"):
         st["stage"] = "closeout_pending"
-        st["satisfied_at"] = st.get("satisfied_at") or now
+        st["satisfied_at"] = st.get("satisfied_at") or timing.checkin_due_time(job, cfg) or now
         st["classification"] = "SATISFIED"
-        st["classification_reason"] = "manually confirmed via 'Confirmed Satisfied' indicator"
+        st["classification_reason"] = "manually confirmed via 'Skip to Closing Text' indicator"
     return st
 
 
@@ -97,16 +98,18 @@ def _derive_base(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
         return st
 
     checkin = next((m for m in out if is_checkin(m["text"], job, cfg)), None)
-    if checkin is None:
-        st["stage"] = "no_thread" if not msgs else "no_checkin"
-        return st
-    st["checkin_at"] = checkin["at"]
+    if checkin is not None:
+        st["checkin_at"] = checkin["at"]
 
-    after = [m for m in msgs if m["at"] > checkin["at"]]
+    # Messages that count toward a reply/closeout: after the check-in normally,
+    # but the "Skip to Closing Text" override never sends a check-in at all -
+    # there the closeout itself is the first outbound message, so everything
+    # in the thread counts.
+    after = [m for m in msgs if checkin is None or m["at"] > checkin["at"]]
     replies = [m for m in after if m["direction"] == "inbound" and not is_stop(m["text"])]
     st["replies_after_checkin"] = replies
     closeout_msg = next((m for m in after
-                         if m["direction"] == "outbound" and is_closeout(m["text"], cfg)), None)
+                         if m["direction"] == "outbound" and is_closeout(m["text"], job, cfg)), None)
     st["closeout_sent"] = closeout_msg is not None
 
     if st["closeout_sent"]:
@@ -120,6 +123,9 @@ def _derive_base(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
             st["stage"] = "closeout_reply"
         else:
             st["stage"] = "closed_satisfied"
+        return st
+    if checkin is None:
+        st["stage"] = "no_thread" if not msgs else "no_checkin"
         return st
     if not replies:
         st["stage"] = "awaiting_reply"

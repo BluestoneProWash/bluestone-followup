@@ -98,9 +98,17 @@ templates:
   check_in: |
     Hey [first_name] this is Anderson. Thank you for your business we really appreciate it! How did everything turn out?
 
+  # The opening line of the closeout text. [closeout_opener] below picks one
+  # of the two depending on how the job got here.
+  #   - closeout_opener_default: normal path - customer replied positively.
+  #   - closeout_opener_direct: "Skip to Closing Text" override - there was no
+  #     check-in reply to react to, so it doesn't say "glad to hear it".
+  closeout_opener_default: "Glad to hear it!"
+  closeout_opener_direct: "Hey [first_name] thanks again for your business!"
+
   # SATISFIED reply + the job notes HAVE a future-quotes section.
   closeout_with_quotes: |
-    Glad to hear it! Here's the quotes we came up with for you while we were there - good for the next [quote_validity_months] months, so no need to get a new quote when you're ready:
+    [closeout_opener] Here's the quotes we came up with for you while we were there - good for the next [quote_validity_months] months, so no need to get a new quote when you're ready:
 
     [quote_list]
 
@@ -112,7 +120,7 @@ templates:
 
   # SATISFIED reply + NO future-quotes section in the job notes.
   closeout_no_quotes: |
-    Glad to hear it!
+    [closeout_opener]
 
     [window_plan_block]
 
@@ -276,15 +284,18 @@ markers:
 
 # ---------------------------------------------------------------------------
 # 6. MANUAL OVERRIDE - skip straight to the closeout text
-#    Add the "Confirmed Satisfied" indicator to a job in RevDek (one tap,
+#    Add the "Skip to Closing Text" indicator to a job in RevDek (one tap,
 #    same as any other job indicator) whenever you already know the customer
 #    is happy through some channel other than replying to the automated
-#    check-in - e.g. they texted or called you directly to say thanks. The
-#    next hourly run sends the closeout straight away: no check-in wait, no
-#    classification needed. Safe to leave the indicator on the job afterward -
-#    the actual do-not-resend guard is the separate "Bluestone Automation"
-#    marker above, so this can't cause a duplicate send.
+#    check-in - e.g. they texted or called you directly to say thanks. No
+#    check-in text goes out, and the closeout goes out the next morning at
+#    the usual send time (initial_followup.next_morning_time) - just like a
+#    normal cycle, minus the check-in and the wait for a reply. Its opening
+#    line is templates.closeout_opener_direct instead of "Glad to hear it!",
+#    since there was no reply to react to. Safe to leave the indicator on the
+#    job afterward - the actual do-not-resend guard is the separate
+#    "Bluestone Automation" marker above, so this can't cause a duplicate send.
 #
-#    SETUP: create and enable a "Confirmed Satisfied" indicator in RevDek
+#    SETUP: create and enable a "Skip to Closing Text" indicator in RevDek
 #    (Customize -> Job Indicators) - matched by name, no notes needed.
 # ---------------------------------------------------------------------------
