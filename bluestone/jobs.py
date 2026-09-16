@@ -21,6 +21,16 @@ def _closing_quotes_note(raw: dict) -> str | None:
     return None
 
 
+def _has_force_satisfied(raw: dict) -> bool:
+    """The 'Confirmed Satisfied' indicator - a manual override Anderson can add
+    in RevDek (same one-tap pattern as 'Closing Quotes Given') to skip straight
+    to the closeout text without waiting on the automated check-in/reply."""
+    for ind in raw.get("indicators") or []:
+        if "confirmed satisfied" in (ind.get("name") or "").lower():
+            return True
+    return False
+
+
 def _service_label(service_type: list[str]) -> str:
     st = [s.strip() for s in (service_type or []) if s and s.strip()]
     if not st:
@@ -95,6 +105,7 @@ def normalize_job(raw: dict, customer: dict | None = None) -> dict:
         "price": raw.get("price"),
         "notes": raw.get("notes"),
         "closing_quotes_note": _closing_quotes_note(raw),
+        "force_satisfied": _has_force_satisfied(raw),
         "indicators": raw.get("indicators") or [],
         "date": raw.get("date"),
         "time": raw.get("time"),

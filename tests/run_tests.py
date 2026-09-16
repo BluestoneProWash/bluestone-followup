@@ -184,6 +184,30 @@ old_cycle = [msg("outbound", CHECKIN, datetime(2026, 9, 1, 9, 0, tzinfo=CT)),
 check("old cycle before this job's date is ignored -> no_thread",
       state.derive(job_new, old_cycle, datetime(2026, 9, 6, 10, 0, tzinfo=CT), CFG)["stage"] == "no_thread")
 
+print("state.derive - 'Confirmed Satisfied' manual override")
+job_fs = normalize_job({"id": "fs1", "service_type": ["House Wash"], "price": 350, "date": "2026-09-01",
+                        "end_time": "12:00:00", "notes": "x",
+                        "customer": {"first_name": "Amy", "last_name": "Ray"},
+                        "indicators": [{"name": "Confirmed Satisfied", "notes": None}]},
+                       {"first_name": "Amy", "last_name": "Ray", "phone": "+12055551234"})
+check("force_satisfied flag extracted from indicator", job_fs["force_satisfied"] is True)
+check("no thread at all -> still fast-tracked to closeout_pending",
+      state.derive(job_fs, [], t0, CFG)["stage"] == "closeout_pending")
+check("checkin sent, no reply yet -> fast-tracked to closeout_pending",
+      state.derive(job_fs, [msg("outbound", CHECKIN, t0)], t0, CFG)["stage"] == "closeout_pending")
+th_fs_neg = [msg("outbound", CHECKIN, t0), msg("inbound", "still streaks everywhere", t0 + timedelta(minutes=5))]
+check("would-have-escalated reply -> overridden to closeout_pending",
+      state.derive(job_fs, th_fs_neg, t0 + timedelta(minutes=6), CFG)["stage"] == "closeout_pending")
+check("STOP still wins over the override -> opted_out",
+      state.derive(job_fs, [msg("inbound", "STOP", t0)], t0, CFG)["stage"] == "opted_out")
+th_fs_done = [msg("outbound", CHECKIN, t0), msg("inbound", "looks great", t0 + timedelta(minutes=5)),
+             msg("outbound", CLOSEOUT, t0 + timedelta(minutes=10))]
+check("closeout already sent -> not resurrected (closed_satisfied, no resend)",
+      state.derive(job_fs, th_fs_done, t0 + timedelta(hours=1), CFG)["stage"] == "closed_satisfied")
+job_no_fs = normalize_job({"id": "nofs", "service_type": ["House Wash"], "price": 350, "date": "2026-09-01",
+                           "notes": "x", "customer": {"first_name": "Amy", "last_name": "Ray"}}, None)
+check("job without the indicator -> flag is False", job_no_fs["force_satisfied"] is False)
+
 print("state.already_escalated")
 esc_body = templates.render_escalation(job, "bad", CFG)  # contains customer phone +12055551234
 ath = [msg("outbound", esc_body, t0)]

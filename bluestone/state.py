@@ -50,6 +50,25 @@ def is_stop(text: str) -> bool:
 # ---- per-job state --------------------------------------------------------
 def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
            classifier=None) -> dict:
+    """Return the current follow-up state of one job. See _derive_base below
+    for the stage list and thread-reading logic; this wrapper applies the
+    'Confirmed Satisfied' manual override on top of it."""
+    st = _derive_base(job, thread, now, cfg, classifier)
+    # Manual override: Anderson (or a tech) adds the "Confirmed Satisfied"
+    # indicator in RevDek - e.g. the customer thanked him directly instead of
+    # replying to the automated check-in - and the next run skips straight to
+    # the closeout text. Never resurrects a job that's opted out or already
+    # had its closeout sent/replied-to.
+    if job.get("force_satisfied") and st["stage"] not in ("opted_out", "closed_satisfied", "closeout_reply"):
+        st["stage"] = "closeout_pending"
+        st["satisfied_at"] = st.get("satisfied_at") or now
+        st["classification"] = "SATISFIED"
+        st["classification_reason"] = "manually confirmed via 'Confirmed Satisfied' indicator"
+    return st
+
+
+def _derive_base(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
+                  classifier=None) -> dict:
     """Return the current follow-up state of one job.
 
     stage: no_thread | no_checkin | awaiting_reply | closeout_pending |

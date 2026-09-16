@@ -233,28 +233,25 @@ sending:
   # Safety: ignore any job whose scheduled date is before this. Stops a first run
   # from back-filling historical completed jobs. Set it to the go-live date.
   # Overridable per-run with the BLUESTONE_COMPLETED_SINCE env var.
-  completed_since: "${BLUESTONE_COMPLETED_SINCE:-2026-09-08}"
+  #
+  # Bumped to 2026-09-16 when job_allowlist opened to all jobs - without this,
+  # every real completed job back to 9/8 (e.g. Keith S, and anyone else never
+  # part of testing) would have become eligible for a check-in text on the
+  # next run. Only jobs completed 9/16 or later are ever touched now.
+  completed_since: "${BLUESTONE_COMPLETED_SINCE:-2026-09-16}"
 
   # Safety: ignore any job older than this many days (a stale completed job that
   # never got followed up shouldn't suddenly get a text weeks later).
   max_job_age_days: 14
 
   # Test scoping: when this list is non-empty, ONLY these job IDs are ever
-  # followed up - every other completed job is ignored. Empty [] = normal operation.
-  # Real customers Alex Roth / Mallorie Petrusson removed 2026-09-14 - not
-  # touching real customers until the marker system has proven out on a
-  # fresh, disposable test job first. Add ONLY test job IDs below.
+  # followed up - every other completed job is ignored. Empty [] = normal
+  # operation, every completed job in RevDek is in scope.
   #
-  # IMPORTANT: an EMPTY list here means "no restriction" - every completed job
-  # in RevDek is in scope. Never leave this empty while testing. The placeholder
-  # below matches no real job, so the list stays non-empty (restrictive) with
-  # nothing in scope until a real test job ID replaces it.
-  job_allowlist:
-    - c7f13914-20b5-446a-9275-2804ae2060e9   # TEST: Summer O'Neal, Sep 14, PW + Window Cleaning (bundled % window line, has quotes)
-    - be811768-9a44-4241-bbdb-48667b4b7eae   # TEST: Dad Oneal, Sep 14, Window Cleaning only (priced window line, no quotes)
-    - 0dada505-63c9-45e1-8b3e-cc14c9d01cc4   # Kay Harrison, Sep 15, PW + Window Cleaning - FIRST REAL CUSTOMER, live 9/16
-    # Keith S (ea63702c-368f-422e-a22b-31ef96130860) is a REAL customer completed same day as
-    # the Sep 14 tests - deliberately NOT listed.
+  # Live end-to-end proven 2026-09-16 on a real customer (Kay Harrison) - full
+  # cycle worked (check-in -> positive reply -> correct closeout, no
+  # duplicates). Now running in production for every completed job.
+  job_allowlist: []
 
 guardrails:
   # Never send closeout without an explicit SATISFIED classification.
@@ -276,3 +273,18 @@ markers:
   #     checkin sent 2026-09-10T14:03:00Z
   #     closeout sent 2026-09-10T15:20:00Z
   indicator_name: "Bluestone Automation"
+
+# ---------------------------------------------------------------------------
+# 6. MANUAL OVERRIDE - skip straight to the closeout text
+#    Add the "Confirmed Satisfied" indicator to a job in RevDek (one tap,
+#    same as any other job indicator) whenever you already know the customer
+#    is happy through some channel other than replying to the automated
+#    check-in - e.g. they texted or called you directly to say thanks. The
+#    next hourly run sends the closeout straight away: no check-in wait, no
+#    classification needed. Safe to leave the indicator on the job afterward -
+#    the actual do-not-resend guard is the separate "Bluestone Automation"
+#    marker above, so this can't cause a duplicate send.
+#
+#    SETUP: create and enable a "Confirmed Satisfied" indicator in RevDek
+#    (Customize -> Job Indicators) - matched by name, no notes needed.
+# ---------------------------------------------------------------------------

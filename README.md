@@ -13,6 +13,11 @@ classifies it, and branches:
   well?" again after an ambiguous or negative reply reads as tone-deaf.
 - **STOP** → opted out, never texted again.
 
+**Manual override**: add the **"Confirmed Satisfied"** indicator to a job in
+RevDek (one tap) if you already know the customer is happy through some other
+channel - e.g. they texted or called you directly. The next hourly run skips
+straight to the closeout text, no check-in or reply needed.
+
 ## Design
 
 Every run, the engine reads jobs and conversation threads from RevDek and
@@ -57,5 +62,10 @@ python3 tests/run_tests.py
 - `sending.job_allowlist` limits it to specific test job IDs. **An EMPTY list
   means no restriction — every completed job in RevDek is in scope.** Never
   leave it empty while testing; use a placeholder ID that matches nothing.
+  Live-proven on a real customer 2026-09-16 and now running for every job.
+- `sending.completed_since` is the other safety net: nothing dated before it
+  is ever touched, no matter what `job_allowlist` says. Bumped forward
+  whenever the allowlist opens up, so opening it never reaches back and texts
+  a real customer whose job predates the decision to go live.
 - `sending.halted: true` is a hard kill switch (send nothing, ever) independent
   of everything else. `sending.dry_run: true` logs without sending.
