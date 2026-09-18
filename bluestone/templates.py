@@ -113,6 +113,19 @@ def render_closeout_reply(job: dict, reply_text: str, cfg: Any) -> str:
     return _tidy(_fill(cfg["templates"]["closeout_reply"], values))
 
 
+def render_invoice_link_missing(job: dict, cfg: Any) -> str:
+    values = base_values(cfg)
+    values.update(
+        {
+            "customer_name": (job.get("customer_name") or "").strip(),
+            "customer_phone": job.get("customer_phone", ""),
+            "service": job.get("service_label", ""),
+            "date": job.get("date_label", ""),
+        }
+    )
+    return _tidy(_fill(cfg["templates"]["invoice_link_missing"], values))
+
+
 def render_notes_needed(job: dict, cfg: Any) -> str:
     values = base_values(cfg)
     values.update(

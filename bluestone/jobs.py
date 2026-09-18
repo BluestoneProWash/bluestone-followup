@@ -34,6 +34,18 @@ def _has_force_satisfied(raw: dict) -> bool:
     return False
 
 
+def _has_do_not_follow_up(raw: dict) -> bool:
+    """The 'Dont Follow Up' indicator - skip this job entirely, no texts of any
+    kind (check-in, closeout, escalation). Used e.g. when Anderson already
+    reached out directly and the customer's satisfaction is unknown, so it
+    wouldn't be right to ask for a review."""
+    for ind in raw.get("indicators") or []:
+        name = (ind.get("name") or "").lower().replace("'", "").replace("’", "")
+        if "dont follow up" in name:
+            return True
+    return False
+
+
 def _payment_note(raw: dict) -> str | None:
     for ind in raw.get("indicators") or []:
         if "payment collected" in (ind.get("name") or "").lower():
@@ -134,6 +146,7 @@ def normalize_job(raw: dict, customer: dict | None = None) -> dict:
         "notes": raw.get("notes"),
         "closing_quotes_note": _closing_quotes_note(raw),
         "force_satisfied": _has_force_satisfied(raw),
+        "do_not_follow_up": _has_do_not_follow_up(raw),
         "needs_invoice": _needs_invoice(raw),
         "invoice_link": _invoice_link(raw),
         "indicators": raw.get("indicators") or [],

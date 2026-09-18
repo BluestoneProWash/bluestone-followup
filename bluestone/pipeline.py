@@ -45,6 +45,8 @@ def _to(cfg: Any) -> str | None:
 
 def _in_scope(job: dict, now_ct: datetime, cfg: Any) -> bool:
     s = cfg["sending"]
+    if job.get("do_not_follow_up"):
+        return False
     if not job.get("completed"):
         return False
     allowlist = set(s.get("job_allowlist") or [])
@@ -150,10 +152,18 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
                 continue
             if job.get("needs_invoice") and not job.get("invoice_link"):
                 # Payment marked Credit Card but the link hasn't been pasted
-                # into the indicator yet - wait, don't send the plain check-in
+                # into the indicator yet - never send the plain check-in
                 # instead, that would break the promise of an invoice text.
-                actions.append(Action("note", jid, "checkin",
-                                      meta={"waiting_on": "invoice link not yet on Payment Collected indicator"}))
+                # Alert Anderson once (marker-gated, same as any escalation)
+                # so it doesn't just sit unnoticed.
+                if "escalated" in marked or state_mod.already_escalated(job, anderson_thread, now_ct, cfg):
+                    actions.append(Action("note", jid, "checkin",
+                                          meta={"skipped": "invoice link missing, already alerted"}))
+                    continue
+                actions.append(send("notify_anderson", jid, "invoice_link_missing", esc_to,
+                                    templates.render_invoice_link_missing(job, cfg),
+                                    "escalated", marker_note,
+                                    {"method": cfg["escalation"].get("method", "sms")}))
                 continue
             if job.get("invoice_link"):
                 # Credit-card + link is the one case that ignores the

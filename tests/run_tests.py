@@ -459,6 +459,43 @@ cc_nolink = normalize_job({"id": "CCNL", "service_type": ["Pressure Washing"], "
                           {"first_name": "Dana", "last_name": "Diaz", "phone": "+12055550302"})
 acts = pipeline.plan([cc_nolink], {}, same_day_afternoon, CFGP)
 check("no link yet -> no send_sms at all", not [a for a in acts if a.kind == "send_sms"], [a.as_dict() for a in acts])
+alerts = [a for a in acts if a.kind == "notify_anderson"]
+check("no link yet -> admin alert to Anderson instead", len(alerts) == 1, [a.as_dict() for a in acts])
+check("alert goes to escalation number, not the customer",
+      alerts and alerts[0].to == esc_num, alerts[0].to if alerts else None)
+check("alert mentions the customer", alerts and "Dana Diaz" in alerts[0].body, alerts[0].body if alerts else None)
+# second run, marker already says escalated -> no repeat alert
+marked_note = markers.add(None, "escalated", same_day_afternoon)
+cc_nolink_marked = normalize_job({"id": "CCNL", "service_type": ["Pressure Washing"], "price": 300,
+                                  "date": "2026-09-01", "end_time": "12:00:00", "completed": True, "notes": "",
+                                  "customer": {"first_name": "Dana", "last_name": "Diaz"},
+                                  "indicators": [{"name": "Payment Collected", "notes": "Credit Card · $300.00"},
+                                                 {"name": "Bluestone Automation", "notes": marked_note}]},
+                                 {"first_name": "Dana", "last_name": "Diaz", "phone": "+12055550302"})
+acts = pipeline.plan([cc_nolink_marked], {}, same_day_afternoon + timedelta(hours=1), CFGP)
+check("already-alerted job -> no repeat notify_anderson",
+      not [a for a in acts if a.kind == "notify_anderson"], [a.as_dict() for a in acts])
+
+# 13. "Dont Follow Up" indicator -> the job is invisible to the automation,
+# no texts of any kind, ever (not even a note).
+dnfu = normalize_job({"id": "DNFU", "service_type": ["Pressure Washing"], "price": 300, "date": "2026-09-01",
+                      "end_time": "12:00:00", "completed": True, "notes": "",
+                      "customer": {"first_name": "Eve", "last_name": "Ellis"},
+                      "indicators": [{"name": "Dont Follow Up", "notes": None}]},
+                     {"first_name": "Eve", "last_name": "Ellis", "phone": "+12055550303"})
+check("do_not_follow_up flag extracted", dnfu["do_not_follow_up"] is True)
+acts = pipeline.plan([dnfu], {}, now, CFGP)
+check("Dont Follow Up -> zero actions of any kind", acts == [], [a.as_dict() for a in acts])
+# even with a positive reply already in the thread, still fully skipped
+dnfu_thread = {"+12055550303": [msg("outbound", CHECKIN, t0), msg("inbound", "great job", t0 + timedelta(minutes=5))]}
+acts = pipeline.plan([dnfu], dnfu_thread, now, CFGP)
+check("Dont Follow Up overrides even an existing positive reply", acts == [], [a.as_dict() for a in acts])
+dnfu_apostrophe = normalize_job({"id": "DNFU2", "service_type": ["Pressure Washing"], "price": 300,
+                                 "date": "2026-09-01", "end_time": "12:00:00", "completed": True, "notes": "",
+                                 "customer": {"first_name": "Fay", "last_name": "Fox"},
+                                 "indicators": [{"name": "Don't Follow Up", "notes": None}]},
+                                {"first_name": "Fay", "last_name": "Fox", "phone": "+12055550304"})
+check("curly-quote apostrophe variant also matches", dnfu_apostrophe["do_not_follow_up"] is True)
 
 print()
 print(f"{_p} passed, {_f} failed")

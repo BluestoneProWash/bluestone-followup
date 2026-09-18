@@ -120,9 +120,16 @@ invoice link in its check-in text instead of the normal wording. If Anderson
 has pasted the link on the line below (in that indicator's note), the
 `checkin` action fires **the moment this run sees it, any hour of day** - it
 does not wait for the next-morning window like every other check-in. If the
-line says Credit Card but no link is there yet, `plan` emits nothing for that
-job (a `note`, not a `checkin`) - don't invent a check-in text without the
-link, just wait for a future run once he's pasted it.
+line says Credit Card but no link is there yet, `plan` emits a
+`notify_anderson` / `invoice_link_missing` action instead (once - marker-
+gated like any other alert) so he knows to go paste it. Don't invent a
+check-in text without the link.
+
+A job carrying the **"Dont Follow Up"** indicator (any apostrophe style) is
+completely invisible to the automation - `plan` emits nothing for it at all,
+not even a `note`. Used when Anderson already handled the customer directly
+and doesn't want a review ask going out. Nothing to do here beyond passing
+its `indicators` array through like any other job.
 
 ## 4. Execute each action (only if `dry_run` is false)
 

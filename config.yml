@@ -153,6 +153,12 @@ templates:
   notes_needed: |
     [customer_name] replied happy to the [service] check-in on [date], but the job notes have no "future quotes" section, so the closeout text is on hold. Add the future quotes to that job in RevDek and it'll send automatically - or close it out yourself.
 
+  # Goes to Anderson (not the customer). Payment Collected says Credit Card
+  # but no invoice link has been pasted below it yet, so no check-in has gone
+  # out at all. Sent once per job (marker-gated, same as any other alert).
+  invoice_link_missing: |
+    [customer_name] ([customer_phone])'s [service] job on [date] was marked Credit Card, but there's no invoice link on the Payment Collected indicator yet. Paste the link in and the check-in will go out on the next run.
+
   # Goes to Anderson, not the customer.
   escalation: |
     Heads up - [customer_name] ([customer_phone]) replied about the [service] job on [date] and didn't sound fully satisfied. Their reply: "[reply_text]". No automated follow-up was sent. Handle directly when you can.

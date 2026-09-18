@@ -27,8 +27,14 @@ e.g. `Credit Card · $300.00` then the link), the check-in text swaps to "Hey
 ready. How did everything turn out? [link]" - and it's sent **the moment
 that run sees it, any hour of day**. This is the one exception to the
 next-morning-only rule. If Credit Card is marked but the link isn't pasted
-yet, nothing goes out until it is - the engine never sends a check-in
-without the promised link.
+yet, the engine never sends a check-in without the promised link - instead
+it texts Anderson once as a reminder to go paste it.
+
+**Skip entirely**: add the **"Dont Follow Up"** indicator (either apostrophe
+style) to a job and the automation never touches it - no check-in, no
+closeout, no escalation, nothing, ever. For cases like a customer Anderson
+already reached out to directly whose satisfaction is unknown, where asking
+for a review wouldn't be right.
 
 ## Design
 
