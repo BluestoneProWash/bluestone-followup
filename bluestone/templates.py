@@ -41,9 +41,11 @@ def render_check_in(job: dict, cfg: Any) -> str:
             "first_name": job.get("first_name", "there").strip() or "there",
             "service": job.get("service_label", ""),
             "date": job.get("date_label", ""),
+            "invoice_link": job.get("invoice_link") or "",
         }
     )
-    return _tidy(_fill(cfg["templates"]["check_in"], values))
+    template = cfg["templates"]["check_in_invoice"] if job.get("invoice_link") else cfg["templates"]["check_in"]
+    return _tidy(_fill(template, values))
 
 
 def render_closeout_opener(job: dict, cfg: Any) -> str:

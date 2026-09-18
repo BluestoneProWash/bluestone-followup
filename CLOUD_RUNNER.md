@@ -115,6 +115,15 @@ usual time instead, with a different opening line. This is handled entirely
 inside the engine from the `indicators` array you already wrote to
 `jobs.json` in step 1 — nothing extra to do here.
 
+A job whose **"Payment Collected"** indicator says **Credit Card** needs an
+invoice link in its check-in text instead of the normal wording. If Anderson
+has pasted the link on the line below (in that indicator's note), the
+`checkin` action fires **the moment this run sees it, any hour of day** - it
+does not wait for the next-morning window like every other check-in. If the
+line says Credit Card but no link is there yet, `plan` emits nothing for that
+job (a `note`, not a `checkin`) - don't invent a check-in text without the
+link, just wait for a future run once he's pasted it.
+
 ## 4. Execute each action (only if `dry_run` is false)
 
 For every `send_sms` / `notify_anderson` action, **in this exact order**:

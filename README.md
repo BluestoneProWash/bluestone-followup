@@ -20,6 +20,16 @@ closeout goes out the next morning at the usual time, opening with "Hey
 [name] thanks again for your business!" instead of "Glad to hear it!" since
 there was no reply to react to.
 
+**Credit card invoices**: if the tech marks the **"Payment Collected"**
+indicator **Credit Card** (with the invoice link pasted on the line below,
+e.g. `Credit Card · $300.00` then the link), the check-in text swaps to "Hey
+[name] thank you for your business! Here's the invoice whenever you're
+ready. How did everything turn out? [link]" - and it's sent **the moment
+that run sees it, any hour of day**. This is the one exception to the
+next-morning-only rule. If Credit Card is marked but the link isn't pasted
+yet, nothing goes out until it is - the engine never sends a check-in
+without the promised link.
+
 ## Design
 
 Every run, the engine reads jobs and conversation threads from RevDek and

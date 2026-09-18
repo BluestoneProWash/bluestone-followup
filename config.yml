@@ -98,6 +98,13 @@ templates:
   check_in: |
     Hey [first_name] this is Anderson. Thank you for your business we really appreciate it! How did everything turn out?
 
+  # Used instead of check_in above when the "Payment Collected" indicator says
+  # Credit Card and Anderson has pasted the invoice link below it. Sent the
+  # moment both conditions are true, at any hour - it does NOT wait for the
+  # next-morning window like every other check-in does.
+  check_in_invoice: |
+    Hey [first_name] thank you for your business! Here's the invoice whenever you're ready. How did everything turn out? [invoice_link]
+
   # The opening line of the closeout text. [closeout_opener] below picks one
   # of the two depending on how the job got here.
   #   - closeout_opener_default: normal path - customer replied positively.

@@ -148,9 +148,21 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
                 actions.append(Action("note", jid, "checkin",
                                       meta={"skipped": "checkin marker already on job"}))
                 continue
-            due = timing.checkin_due_time(job, cfg)
-            if due is None or now_ct < timing.to_ct(due, cfg):
+            if job.get("needs_invoice") and not job.get("invoice_link"):
+                # Payment marked Credit Card but the link hasn't been pasted
+                # into the indicator yet - wait, don't send the plain check-in
+                # instead, that would break the promise of an invoice text.
+                actions.append(Action("note", jid, "checkin",
+                                      meta={"waiting_on": "invoice link not yet on Payment Collected indicator"}))
                 continue
+            if job.get("invoice_link"):
+                # Credit-card + link is the one case that ignores the
+                # next-morning window entirely - send as soon as it's seen.
+                due = now_ct
+            else:
+                due = timing.checkin_due_time(job, cfg)
+                if due is None or now_ct < timing.to_ct(due, cfg):
+                    continue
             if sent >= max_sends:
                 continue
             actions.append(send("send_sms", jid, "checkin", phone,

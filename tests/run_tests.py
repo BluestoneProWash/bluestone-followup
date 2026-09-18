@@ -110,6 +110,31 @@ check("no-quotes closeout: no quote lines, has referral+review",
       not co["has_quotes"] and "refer a friend" in co["body"] and "review" in co["body"])
 check("no triple blank", "\n\n\n" not in co["body"])
 
+print("templates - credit card invoice check-in")
+job_cc = normalize_job({"id": "cc1", "service_type": ["Pressure Washing"], "price": 300, "date": "2026-09-17",
+                        "notes": "", "customer": {"first_name": "summer", "last_name": "oneal"},
+                        "indicators": [{"name": "Payment Collected",
+                                        "notes": "Credit Card · $300.00\nhttps://revdek.ai/p/abc123"}]},
+                       {"first_name": "summer", "last_name": "oneal", "phone": "+12054273210"})
+check("needs_invoice extracted", job_cc["needs_invoice"] is True)
+check("invoice_link extracted", job_cc["invoice_link"] == "https://revdek.ai/p/abc123")
+ci_cc = templates.render_check_in(job_cc, CFG)
+check("invoice check-in wording + link", ci_cc ==
+      "Hey Summer thank you for your business! Here's the invoice whenever you're ready. "
+      "How did everything turn out? https://revdek.ai/p/abc123", ci_cc)
+job_cc_nolink = normalize_job({"id": "cc2", "service_type": ["Pressure Washing"], "price": 300, "date": "2026-09-17",
+                               "notes": "", "customer": {"first_name": "bob", "last_name": "jones"},
+                               "indicators": [{"name": "Payment Collected", "notes": "Credit Card · $300.00"}]},
+                              {"first_name": "bob", "last_name": "jones", "phone": "+12055559999"})
+check("needs_invoice true, no link yet -> invoice_link None",
+      job_cc_nolink["needs_invoice"] is True and job_cc_nolink["invoice_link"] is None)
+job_check = normalize_job({"id": "chk", "service_type": ["Pressure Washing"], "price": 300, "date": "2026-09-17",
+                           "notes": "", "customer": {"first_name": "amy", "last_name": "ray"},
+                           "indicators": [{"name": "Payment Collected", "notes": "Check · $300.00"}]},
+                          {"first_name": "amy", "last_name": "ray", "phone": "+12055550000"})
+check("check payment -> needs_invoice False", job_check["needs_invoice"] is False)
+check("normal check-in unaffected", templates.render_check_in(job_check, CFG).startswith("Hey Amy this is Anderson"))
+
 print("timing")
 due = timing.checkin_due_time({"date": "2026-09-01", "end_time": "14:00:00"}, CFG)
 check("next_morning: due 9am the day after the job", due == datetime(2026, 9, 2, 9, 0, tzinfo=CT), due)
@@ -410,6 +435,30 @@ check("check-in not due before 9am -> nothing", not [a for a in acts if a.kind =
 # same-day as job -> not due
 acts = pipeline.plan(jobs, {}, datetime(2026, 9, 1, 20, 0, tzinfo=CT), CFGP)
 check("check-in not due same day as job", not [a for a in acts if a.kind == "send_sms"], [a.as_dict() for a in acts])
+
+# 11. credit-card + invoice link: sends immediately, same day, ignoring the
+# next-morning window entirely (the one exception to that rule).
+cc_job = normalize_job({"id": "CC", "service_type": ["Pressure Washing"], "price": 300, "date": "2026-09-01",
+                        "end_time": "12:00:00", "completed": True, "notes": "",
+                        "customer": {"first_name": "Cara", "last_name": "Cole"},
+                        "indicators": [{"name": "Payment Collected",
+                                        "notes": "Credit Card · $300.00\nhttps://revdek.ai/p/xyz789"}]},
+                       {"first_name": "Cara", "last_name": "Cole", "phone": "+12055550301"})
+same_day_afternoon = datetime(2026, 9, 1, 15, 0, tzinfo=CT)   # same day as the job, well before 9am next day
+acts = pipeline.plan([cc_job], {}, same_day_afternoon, CFGP)
+sends = [a for a in acts if a.kind == "send_sms"]
+check("invoice check-in sent same-day, not gated to next morning", len(sends) == 1, [a.as_dict() for a in acts])
+check("invoice check-in has the link", sends and "https://revdek.ai/p/xyz789" in sends[0].body,
+      sends[0].body if sends else None)
+
+# 12. credit-card marked but link not pasted yet -> waits, sends nothing
+cc_nolink = normalize_job({"id": "CCNL", "service_type": ["Pressure Washing"], "price": 300, "date": "2026-09-01",
+                           "end_time": "12:00:00", "completed": True, "notes": "",
+                           "customer": {"first_name": "Dana", "last_name": "Diaz"},
+                           "indicators": [{"name": "Payment Collected", "notes": "Credit Card · $300.00"}]},
+                          {"first_name": "Dana", "last_name": "Diaz", "phone": "+12055550302"})
+acts = pipeline.plan([cc_nolink], {}, same_day_afternoon, CFGP)
+check("no link yet -> no send_sms at all", not [a for a in acts if a.kind == "send_sms"], [a.as_dict() for a in acts])
 
 print()
 print(f"{_p} passed, {_f} failed")

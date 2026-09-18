@@ -1,8 +1,11 @@
 """Normalize a raw RevDek job (+ customer contact) into the shape the engine uses."""
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from typing import Any
+
+_URL_RE = re.compile(r"https?://\S+")
 
 
 def _name_case(name: str) -> str:
@@ -29,6 +32,31 @@ def _has_force_satisfied(raw: dict) -> bool:
         if "skip to closing" in (ind.get("name") or "").lower():
             return True
     return False
+
+
+def _payment_note(raw: dict) -> str | None:
+    for ind in raw.get("indicators") or []:
+        if "payment collected" in (ind.get("name") or "").lower():
+            return ind.get("notes")
+    return None
+
+
+def _needs_invoice(raw: dict) -> bool:
+    """Tech marked payment as 'Credit Card' on the 'Payment Collected' indicator -
+    this job needs an invoice link in its check-in text before anything else
+    can go out."""
+    note = _payment_note(raw) or ""
+    return "credit card" in note.lower()
+
+
+def _invoice_link(raw: dict) -> str | None:
+    """The payment link Anderson pastes below the 'Credit Card' line once he's
+    created the invoice in RevDek. None if not pasted yet."""
+    note = _payment_note(raw) or ""
+    if "credit card" not in note.lower():
+        return None
+    m = _URL_RE.search(note)
+    return m.group(0) if m else None
 
 
 def _service_label(service_type: list[str]) -> str:
@@ -106,6 +134,8 @@ def normalize_job(raw: dict, customer: dict | None = None) -> dict:
         "notes": raw.get("notes"),
         "closing_quotes_note": _closing_quotes_note(raw),
         "force_satisfied": _has_force_satisfied(raw),
+        "needs_invoice": _needs_invoice(raw),
+        "invoice_link": _invoice_link(raw),
         "indicators": raw.get("indicators") or [],
         "date": raw.get("date"),
         "time": raw.get("time"),
