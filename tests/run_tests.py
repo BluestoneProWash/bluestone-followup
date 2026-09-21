@@ -235,7 +235,7 @@ check("job without the indicator -> flag is False", job_no_fs["force_satisfied"]
 # stage machine must still recognize it (no check-in ever precedes it) so a
 # reply after it correctly triggers closeout_reply, not an infinite resend.
 FS_CLOSEOUT = templates.render_closeout(job_fs, CFG)["body"]
-check("override opener is the 'thanks again' line, not 'Glad to hear it!'",
+check("override opener is the 'thanks again' line, not the default opener",
       FS_CLOSEOUT.startswith("Hey Amy thanks again for your business!"), FS_CLOSEOUT[:60])
 th_fs_sent = [msg("outbound", FS_CLOSEOUT, t0 + timedelta(minutes=2))]
 check("override closeout recognized with no check-in in thread -> closed_satisfied",

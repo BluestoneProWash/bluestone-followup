@@ -17,8 +17,8 @@ classifies it, and branches:
 RevDek (one tap) if you already know the customer is happy through some other
 channel - e.g. they texted or called you directly. No check-in goes out; the
 closeout goes out the next morning at the usual time, opening with "Hey
-[name] thanks again for your business!" instead of "Glad to hear it!" since
-there was no reply to react to.
+[name] thanks again for your business!" instead of "Great, glad to hear
+it!" since there was no reply to react to.
 
 **Credit card invoices**: if the tech marks the **"Payment Collected"**
 indicator **Credit Card** (with the invoice link pasted on the line below,

@@ -110,18 +110,18 @@ templates:
   #   - closeout_opener_default: normal path - customer replied positively.
   #   - closeout_opener_direct: "Skip to Closing Text" override - there was no
   #     check-in reply to react to, so it doesn't say "glad to hear it".
-  closeout_opener_default: "Glad to hear it!"
+  closeout_opener_default: "Great, glad to hear it!"
   closeout_opener_direct: "Hey [first_name] thanks again for your business!"
 
   # SATISFIED reply + the job notes HAVE a future-quotes section.
   closeout_with_quotes: |
-    [closeout_opener] Here's the quotes we came up with for you while we were there - good for the next [quote_validity_months] months, so no need to get a new quote when you're ready:
+    [closeout_opener] Here's the other quotes we came up with you may be interested in:
 
     [quote_list]
 
     [window_plan_block]
 
-    Also, if you refer a friend you both get [referral_discount] off your next service!
+    Also if you refer a friend you both get [referral_discount] off your next service!
 
     Last thing, if you want to leave us a review those are super helpful and would mean a lot! here's the link: [review_link]
 
@@ -137,11 +137,11 @@ templates:
 
   # Window cleaning bundled WITH another service - percentages only.
   window_plan_block: |
-    Since we did your windows - we offer window cleaning service plans too: [semi_annual_pct]% off for semi-annual, [quarterly_pct]% off for quarterly.
+    We offer window cleaning service plans too: [semi_annual_pct]% off for semi annual, [quarterly_pct]% off for quarterly.
 
   # Window cleaning ONLY - real plan price off this job's price.
   window_plan_block_priced: |
-    Since we did your windows - we offer window cleaning service plans: semi-annual at $[semi_annual_price]/visit ([semi_annual_pct]% off), or quarterly at $[quarterly_price]/visit ([quarterly_pct]% off).
+    We offer window cleaning service plans: semi annual at $[semi_annual_price]/visit ([semi_annual_pct]% off), or quarterly at $[quarterly_price]/visit ([quarterly_pct]% off).
 
   # Goes to Anderson when a reply asks for a callback / to talk to someone.
   # Nothing is sent to the customer - Anderson calls them.
@@ -304,7 +304,7 @@ markers:
 #    check-in text goes out, and the closeout goes out the next morning at
 #    the usual send time (initial_followup.next_morning_time) - just like a
 #    normal cycle, minus the check-in and the wait for a reply. Its opening
-#    line is templates.closeout_opener_direct instead of "Glad to hear it!",
+#    line is templates.closeout_opener_direct instead of closeout_opener_default,
 #    since there was no reply to react to. Safe to leave the indicator on the
 #    job afterward - the actual do-not-resend guard is the separate
 #    "Bluestone Automation" marker above, so this can't cause a duplicate send.

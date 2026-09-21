@@ -54,7 +54,7 @@ def render_closeout_opener(job: dict, cfg: Any) -> str:
     values = base_values(cfg)
     values["first_name"] = job.get("first_name", "there").strip() or "there"
     key = "closeout_opener_direct" if job.get("force_satisfied") else "closeout_opener_default"
-    template = cfg["templates"].get(key) or cfg["templates"].get("closeout_opener_default", "Glad to hear it!")
+    template = cfg["templates"].get(key) or cfg["templates"].get("closeout_opener_default", "Great, glad to hear it!")
     return _fill(template, values).strip()
 
 
