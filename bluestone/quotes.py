@@ -14,10 +14,11 @@ Tolerated either way: "$700" / "$700.00" / "$1,200", colon/dash before price,
 price-first ("$300 windows"), commas / newlines / semicolons as separators.
 An entry is only kept if it has BOTH a service name AND a price.
 
-Also tolerated: a bare leading number with no $ sign and no dollar sign at
-all, e.g. "750 roof, she said she would wait" -> roof $750. Only kicks in
-above `quote_parsing.bare_number_min_amount`, so small incidental numbers
-("2 window screens") aren't misread as prices.
+Also tolerated: a bare leading number with no $ sign at the front, e.g.
+"750 roof, she said she would wait" -> roof $750, or with the $ stuck right
+after the number instead of before it, e.g. "390$ windows" -> windows $390.
+Only kicks in above `quote_parsing.bare_number_min_amount`, so small
+incidental numbers ("2 window screens") aren't misread as prices.
 """
 from __future__ import annotations
 
@@ -28,7 +29,7 @@ _HEADER_RE = re.compile(r"future\s+quotes?\s*[:\-–]?\s*", re.IGNORECASE)
 _NUM = r"([0-9][0-9,]*(?:\.[0-9]{1,2})?)"
 _PRICE_END_RE = re.compile(r"\$?\s*" + _NUM + r"\s*$")          # "roof wash $700"
 _PRICE_START_RE = re.compile(r"^\$\s*" + _NUM + r"\s*[:\-–]?\s*(.+)$")  # "$700 roof wash"
-_PRICE_START_BARE_RE = re.compile(r"^" + _NUM + r"\s*[:\-–]?\s*([A-Za-z].*)$")  # "750 roof"
+_PRICE_START_BARE_RE = re.compile(r"^" + _NUM + r"\s*[:\-–$]?\s*([A-Za-z].*)$")  # "750 roof" / "390$ windows"
 
 CLOSING_QUOTES_INDICATOR = "closing quotes"   # matched case-insensitively in the name
 

@@ -91,6 +91,11 @@ bare = quotes.parse_closing_quotes("750 roof, she said she would wait", CFG)
 check("bare leading number parses as a price", bare == [{"service": "roof", "amount": "750"}], bare)
 check("small incidental numbers below threshold are not prices",
       quotes.parse_closing_quotes("2 window screens, 3 dogs on site", CFG) == [])
+# $ stuck right after the number instead of before it (real tech note: "390$ windows")
+dollar_after = quotes.parse_closing_quotes("390$ windows", CFG)
+check("$ glued after the number still parses", dollar_after == [{"service": "windows", "amount": "390"}], dollar_after)
+check("small number + trailing $ still below threshold -> not a price",
+      quotes.parse_closing_quotes("2$ window screens", CFG) == [])
 
 print("window plans")
 check("no window svc", window_plans.render_window_block(["Pressure Washing"], 400, CFG) == "")
