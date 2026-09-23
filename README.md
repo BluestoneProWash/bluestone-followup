@@ -31,10 +31,19 @@ yet, the engine never sends a check-in without the promised link - instead
 it texts Anderson once as a reminder to go paste it.
 
 **Skip entirely**: add the **"Dont Follow Up"** indicator (either apostrophe
-style) to a job and the automation never touches it - no check-in, no
-closeout, no escalation, nothing, ever. For cases like a customer Anderson
-already reached out to directly whose satisfaction is unknown, where asking
-for a review wouldn't be right.
+style) to a job and no check-in or closeout ever goes out. For cases like a
+customer Anderson already reached out to directly whose satisfaction is
+unknown, where asking for a review wouldn't be right.
+
+**If the customer texts in first**: the check-in is written to sound like
+Anderson personally texting them ("Hey [name] this is Anderson..."). If a
+customer texts in before that check-in ever goes out - either it's a "Dont
+Follow Up" job, or the check-in just hasn't fired yet - sending the canned
+script over their unanswered message would read as him ignoring them. So the
+engine never does that: it holds the check-in and texts Anderson instead
+(once, same dedupe as any other alert) so he can reply personally. If a
+check-in already went out before the situation came up, it's left alone -
+they weren't ignored, so no alert.
 
 ## Design
 

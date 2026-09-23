@@ -44,9 +44,12 @@ def _to(cfg: Any) -> str | None:
 
 
 def _in_scope(job: dict, now_ct: datetime, cfg: Any) -> bool:
+    # Note: "Dont Follow Up" jobs are NOT excluded here - they still need to
+    # be watched for an inbound message the customer sent that would
+    # otherwise go unanswered (see state.py's "pending_inbound" stage). The
+    # do_not_follow_up flag itself is what guarantees no automated text
+    # goes out; scope just controls whether the job is looked at at all.
     s = cfg["sending"]
-    if job.get("do_not_follow_up"):
-        return False
     if not job.get("completed"):
         return False
     allowlist = set(s.get("job_allowlist") or [])
@@ -128,7 +131,23 @@ def plan(jobs: list[dict], threads: dict[str, list[dict]], now: datetime,
         st = state_mod.derive(job, thread, now_ct, cfg, classifier)
         stage = st["stage"]
 
-        if stage in ("opted_out", "closed_satisfied", "awaiting_reply"):
+        if stage in ("opted_out", "closed_satisfied", "awaiting_reply", "do_not_follow_up"):
+            continue
+
+        if stage == "pending_inbound":
+            # Customer texted in before any automated text went out (either a
+            # "Dont Follow Up" job, or the check-in just hasn't fired yet) -
+            # never send the canned check-in over an unanswered message.
+            # Alert Anderson once instead, same dedupe as any other alert.
+            if "escalated" in marked or state_mod.already_escalated(job, anderson_thread, now_ct, cfg):
+                actions.append(Action("note", jid, "pending_inbound",
+                                      meta={"skipped": "already alerted Anderson"}))
+                continue
+            reply_text = st["last_reply"]["text"] if st["last_reply"] else ""
+            actions.append(send("notify_anderson", jid, "pending_inbound", esc_to,
+                                templates.render_pending_inbound(job, reply_text, cfg),
+                                "escalated", marker_note,
+                                {"method": cfg["escalation"].get("method", "sms")}))
             continue
 
         if stage == "closeout_reply":

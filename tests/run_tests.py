@@ -214,6 +214,28 @@ old_cycle = [msg("outbound", CHECKIN, datetime(2026, 9, 1, 9, 0, tzinfo=CT)),
 check("old cycle before this job's date is ignored -> no_thread",
       state.derive(job_new, old_cycle, datetime(2026, 9, 6, 10, 0, tzinfo=CT), CFG)["stage"] == "no_thread")
 
+print("state.derive - customer texts before any automated text goes out")
+th_pre = [msg("inbound", "can you do the back patio too", t0)]
+s_pre = state.derive(job, th_pre, t0 + timedelta(minutes=1), CFG)
+check("inbound before check-in -> pending_inbound, not no_checkin", s_pre["stage"] == "pending_inbound")
+check("pending_inbound captures the message", s_pre["last_reply"]["text"] == "can you do the back patio too")
+check("no inbound yet, no checkin -> still plain no_thread/no_checkin (unaffected)",
+      state.derive(job, [], t0, CFG)["stage"] == "no_thread")
+job_dnfu = normalize_job({"id": "dnfu1", "service_type": ["House Wash"], "price": 350, "date": "2026-09-01",
+                          "end_time": "12:00:00", "notes": "x",
+                          "customer": {"first_name": "Amy", "last_name": "Ray"},
+                          "indicators": [{"name": "Dont Follow Up", "notes": None}]},
+                         {"first_name": "Amy", "last_name": "Ray", "phone": "+12055551234"})
+check("Dont Follow Up, nothing ever sent, no reply -> plain do_not_follow_up",
+      state.derive(job_dnfu, [], t0, CFG)["stage"] == "do_not_follow_up")
+th_dnfu_inbound = [msg("inbound", "got a question about the quote", t0)]
+s_dnfu = state.derive(job_dnfu, th_dnfu_inbound, t0 + timedelta(minutes=1), CFG)
+check("Dont Follow Up + customer texted in, nothing sent yet -> pending_inbound",
+      s_dnfu["stage"] == "pending_inbound")
+th_dnfu_already_texted = [msg("outbound", CHECKIN, t0), msg("inbound", "looks great thanks", t0 + timedelta(minutes=5))]
+check("Dont Follow Up but a check-in already went out before the flag -> stays silent",
+      state.derive(job_dnfu, th_dnfu_already_texted, t0 + timedelta(hours=1), CFG)["stage"] == "do_not_follow_up")
+
 print("state.derive - 'Skip to Closing Text' manual override")
 job_fs = normalize_job({"id": "fs1", "service_type": ["House Wash"], "price": 350, "date": "2026-09-01",
                         "end_time": "12:00:00", "notes": "x",
@@ -501,6 +523,35 @@ dnfu_apostrophe = normalize_job({"id": "DNFU2", "service_type": ["Pressure Washi
                                  "indicators": [{"name": "Don't Follow Up", "notes": None}]},
                                 {"first_name": "Fay", "last_name": "Fox", "phone": "+12055550304"})
 check("curly-quote apostrophe variant also matches", dnfu_apostrophe["do_not_follow_up"] is True)
+
+# 14. customer texts in before the check-in is due -> no check-in goes out,
+# Anderson gets alerted instead. This is the "check-in sounds personal, so
+# silence over an unanswered text looks like Anderson ignored them" case.
+pre_texter = normalize_job({"id": "PRE", "service_type": ["Pressure Washing"], "price": 300, "date": "2026-09-01",
+                            "end_time": "12:00:00", "completed": True, "notes": "",
+                            "customer": {"first_name": "Pat", "last_name": "Lee"}},
+                           {"first_name": "Pat", "last_name": "Lee", "phone": "+12055550401"})
+pre_thread = {"+12055550401": [msg("inbound", "is it ok if my dog is out tomorrow",
+                                   datetime(2026, 9, 1, 18, 0, tzinfo=CT))]}
+acts = pipeline.plan([pre_texter], pre_thread, now, CFGP)   # `now` is well past the normal 9am due time
+check("pre-checkin text -> no send_sms at all", not [a for a in acts if a.kind == "send_sms"], [a.as_dict() for a in acts])
+pre_alerts = [a for a in acts if a.kind == "notify_anderson"]
+check("pre-checkin text -> admin alert instead", len(pre_alerts) == 1, [a.as_dict() for a in acts])
+check("alert quotes the customer's message",
+      pre_alerts and "is it ok if my dog is out tomorrow" in pre_alerts[0].body,
+      pre_alerts[0].body if pre_alerts else None)
+
+# 15. "Dont Follow Up" + a message that's already been answered (check-in
+# sent before the flag existed) -> the absolute-silence case still holds.
+dnfu_answered = normalize_job({"id": "DNFUA", "service_type": ["Pressure Washing"], "price": 300,
+                               "date": "2026-09-01", "end_time": "12:00:00", "completed": True, "notes": "",
+                               "customer": {"first_name": "Gail", "last_name": "Grant"},
+                               "indicators": [{"name": "Dont Follow Up", "notes": None}]},
+                              {"first_name": "Gail", "last_name": "Grant", "phone": "+12055550402"})
+dnfu_thread = {"+12055550402": [msg("outbound", CHECKIN, datetime(2026, 9, 2, 9, 0, tzinfo=CT)),
+                                msg("inbound", "thanks!", datetime(2026, 9, 2, 9, 5, tzinfo=CT))]}
+acts = pipeline.plan([dnfu_answered], dnfu_thread, now, CFGP)
+check("Dont Follow Up job already texted -> zero actions, not an alert", acts == [], [a.as_dict() for a in acts])
 
 print()
 print(f"{_p} passed, {_f} failed")

@@ -159,6 +159,14 @@ templates:
   invoice_link_missing: |
     [customer_name] ([customer_phone])'s [service] job on [date] was marked Credit Card, but there's no invoice link on the Payment Collected indicator yet. Paste the link in and the check-in will go out on the next run.
 
+  # Goes to Anderson (not the customer). The customer texted in before any
+  # automated text went out - either it's a "Dont Follow Up" job, or the
+  # check-in simply hasn't fired yet. Sent instead of the check-in, once
+  # (marker-gated), so the canned script never goes out over an unanswered
+  # message and makes it look like he ignored them.
+  pending_inbound: |
+    [customer_name] ([customer_phone]) texted about the [service] job on [date] before any automated text went out: "[reply_text]". Nothing has been sent to them yet - reply personally so it doesn't look like they were ignored.
+
   # Goes to Anderson, not the customer.
   escalation: |
     Heads up - [customer_name] ([customer_phone]) replied about the [service] job on [date] and didn't sound fully satisfied. Their reply: "[reply_text]". No automated follow-up was sent. Handle directly when you can.

@@ -105,7 +105,7 @@ Prints `{"dry_run":..., "actions":[...]}`. Each action:
 | kind | stage | meaning |
 |---|---|---|
 | `send_sms` | `checkin` / `closeout` | send `body` to `to` (the customer) |
-| `notify_anderson` | `escalation` / `closeout_reply` | send `body` to `to` (the escalation number) — **NOT the customer** |
+| `notify_anderson` | `escalation` / `closeout_reply` / `invoice_link_missing` / `pending_inbound` | send `body` to `to` (the escalation number) — **NOT the customer** |
 | `note` | anything | informational — do nothing, no marker |
 
 A job carrying the **"Skip to Closing Text"** indicator (Anderson's manual
@@ -125,11 +125,20 @@ line says Credit Card but no link is there yet, `plan` emits a
 gated like any other alert) so he knows to go paste it. Don't invent a
 check-in text without the link.
 
-A job carrying the **"Dont Follow Up"** indicator (any apostrophe style) is
-completely invisible to the automation - `plan` emits nothing for it at all,
-not even a `note`. Used when Anderson already handled the customer directly
-and doesn't want a review ask going out. Nothing to do here beyond passing
-its `indicators` array through like any other job.
+A job carrying the **"Dont Follow Up"** indicator (any apostrophe style) never
+gets an automated text - no check-in, no closeout. Used when Anderson already
+handled the customer directly and doesn't want a review ask going out.
+Nothing to do here beyond passing its `indicators` array through like any
+other job - **but it isn't invisible**: it's still watched for an inbound
+message the customer sent, same as below.
+
+**Every check-in is written to sound like Anderson personally texting the
+customer.** If the customer texted in before that check-in ever went out -
+on a "Dont Follow Up" job, or simply because the check-in hasn't fired yet -
+sending the canned script over their unanswered message would look like he
+ignored them. So `plan` never lets that happen: it emits a `notify_anderson`
+/ `pending_inbound` action instead of the `checkin`, once (marker-gated).
+Nothing to do here either - just execute whatever `plan` gives you as usual.
 
 ## 4. Execute each action (only if `dry_run` is false)
 

@@ -59,8 +59,11 @@ def derive(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
     # replying to the automated check-in - and the closeout goes out at the
     # same next-morning time a normal check-in would have, just without ever
     # sending the check-in or waiting on a reply. Never resurrects a job
-    # that's opted out or already had its closeout sent/replied-to.
-    if job.get("force_satisfied") and st["stage"] not in ("opted_out", "closed_satisfied", "closeout_reply"):
+    # that's opted out, already had its closeout sent/replied-to, or is
+    # flagged "Dont Follow Up" - that stays an absolute stop.
+    if job.get("force_satisfied") and st["stage"] not in (
+        "opted_out", "closed_satisfied", "closeout_reply", "do_not_follow_up"
+    ):
         st["stage"] = "closeout_pending"
         st["satisfied_at"] = st.get("satisfied_at") or timing.checkin_due_time(job, cfg) or now
         st["classification"] = "SATISFIED"
@@ -73,7 +76,8 @@ def _derive_base(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
     """Return the current follow-up state of one job.
 
     stage: no_thread | no_checkin | awaiting_reply | closeout_pending |
-           closed_satisfied | closeout_reply | needs_escalation | opted_out
+           closed_satisfied | closeout_reply | needs_escalation | opted_out |
+           pending_inbound | do_not_follow_up
 
     Only messages from at/after this job happened are considered - a prior
     follow-up cycle with the same customer (or unrelated older chatter) must not
@@ -95,6 +99,21 @@ def _derive_base(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
     if any(is_stop(m["text"]) for m in inb):
         st["stage"] = "opted_out"
         st["opted_out"] = True
+        return st
+
+    if job.get("do_not_follow_up"):
+        # Never send anything automated on this job. But if the customer
+        # texted in and NOTHING was ever sent to them (no check-in on
+        # record), Anderson still needs to know - the check-in is meant to
+        # sound like him personally, so total silence reads as him ignoring
+        # them. If a check-in already went out before the flag was added,
+        # they weren't ignored - stay silent, that's the whole point of the flag.
+        already_texted = any(is_checkin(m["text"], job, cfg) for m in out)
+        if inb and not already_texted:
+            st["stage"] = "pending_inbound"
+            st["last_reply"] = inb[-1]
+        else:
+            st["stage"] = "do_not_follow_up"
         return st
 
     checkin = next((m for m in out if is_checkin(m["text"], job, cfg)), None)
@@ -125,7 +144,15 @@ def _derive_base(job: dict, thread: list[dict] | None, now: datetime, cfg: Any,
             st["stage"] = "closed_satisfied"
         return st
     if checkin is None:
-        st["stage"] = "no_thread" if not msgs else "no_checkin"
+        if inb:
+            # Customer texted in before the automated check-in ever went out.
+            # Sending the canned "how did everything turn out" script on top
+            # of an unanswered text would look like Anderson ignored them -
+            # hold it and alert him instead.
+            st["stage"] = "pending_inbound"
+            st["last_reply"] = inb[-1]
+        else:
+            st["stage"] = "no_thread" if not msgs else "no_checkin"
         return st
     if not replies:
         st["stage"] = "awaiting_reply"
